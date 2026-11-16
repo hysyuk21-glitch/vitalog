@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>使い方 | 血圧ノート</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{color-scheme:light;--page:#f9f9f7;--card:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#8a897f;--grid:#e1e0d9;--ring:rgba(11,11,11,.10);--accent:#2a78d6;--wash:rgba(42,120,214,.08);
+  --good:#0ca30c;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--page:#0d0d0d;--card:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#8f8e86;--grid:#2c2c2a;--ring:rgba(255,255,255,.10);--accent:#3987e5;--wash:rgba(57,135,229,.14)}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Segoe UI",sans-serif;-webkit-text-size-adjust:100%;line-height:1.7}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.top{position:sticky;top:0;z-index:5;background:var(--page);border-bottom:1px solid var(--ring);padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top))}
+.top .in{max-width:720px;margin:0 auto;display:flex;align-items:center;gap:10px}
+.back{display:inline-flex;align-items:center;gap:4px;color:var(--accent);text-decoration:none;font-weight:700;font-size:15px;padding:6px 10px 6px 4px;border-radius:10px}
+.back:active{background:var(--wash)}
+.top h1{font-size:16px;margin:0}
+.wrap{max-width:720px;margin:0 auto;padding:14px 14px 40px}
+.toc{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 14px}
+.toc a{font-size:13px;color:var(--ink2);text-decoration:none;border:1px solid var(--ring);background:var(--card);border-radius:999px;padding:5px 11px}
+section{background:var(--card);border:1px solid var(--ring);border-radius:14px;padding:16px;margin-bottom:12px;scroll-margin-top:70px}
+h2{font-size:18px;margin:0 0 8px}
+h3{font-size:15px;margin:16px 0 6px}
+p{margin:8px 0;font-size:15px}
+ul,ol{margin:8px 0;padding-left:22px;font-size:15px}
+li{margin:4px 0}
+table{width:100%;border-collapse:collapse;font-size:14px;margin:10px 0}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--grid);vertical-align:top}
+th{font-size:12px;color:var(--ink2);font-weight:600}
+figure{margin:12px 0}
+figure img{display:block;width:100%;max-width:360px;margin:0 auto;border-radius:12px;border:1px solid var(--ring);box-shadow:0 2px 10px rgba(0,0,0,.06)}
+figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:1px}
+.note{font-size:13px;color:var(--ink2);background:var(--wash);border-radius:10px;padding:10px 12px;margin:10px 0}
+.warn{border-left:4px solid var(--crit)}
+.btn{display:block;text-align:center;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;border-radius:12px;padding:13px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="top"><div class="in"><a class="back" href="./">‹ アプリに戻る</a><h1>使い方</h1></div></div>
+<div class="wrap">
+
+<nav class="toc" aria-label="目次">
+  <a href="#intro">はじめに</a><a href="#home">ホーム画面に追加</a><a href="#measure">測り方</a><a href="#rec">記録</a><a href="#chart">グラフ</a><a href="#ana">分析・対策</a><a href="#log">履歴・バックアップ</a><a href="#faq">よくある質問</a><a href="#caution">注意事項</a>
+</nav>
+
+<section id="intro">
+  <h2>はじめに</h2>
+  <p>血圧ノートは、毎日の家庭血圧を記録して、グラフで推移を見て、自分に合った生活改善のヒントを受け取れる無料のWebアプリです。インストールもログインも要りません。</p>
+  <figure><img src="img/01_top.jpg" alt="起動したところ" loading="lazy"><figcaption>起動したところ：最新の記録と直近7日の平均が表示されます</figcaption></figure>
+  <p>画面下のタブで4つの画面を切り替えます。</p>
+  <table>
+    <tr><th>タブ</th><th>できること</th></tr>
+    <tr><td>記録</td><td>血圧・脈拍・その日の状況を入力する</td></tr>
+    <tr><td>グラフ</td><td>血圧と脈拍の推移を見る</td></tr>
+    <tr><td>分析・対策</td><td>平均・判定・傾向と、あなた向けの対策を見る</td></tr>
+    <tr><td>履歴</td><td>記録の一覧、編集・削除、CSVやバックアップの保存</td></tr>
+  </table>
+  <div class="note"><b>データの保存場所：</b>記録はこの端末のブラウザの中だけに保存され、インターネット上には送信されません。そのぶん、ブラウザのデータを消すと記録も消えるので、ときどきバックアップを取ってください（<a href="#log">履歴・バックアップ</a>）。</div>
+</section>
+
+<section id="home">
+  <h2>ホーム画面に追加する</h2>
+  <p>ホーム画面に追加すると、青いハートのアイコンからアプリのように起動できます。最初に1回だけ行ってください。</p>
+  <h3>iPhone（Safari）</h3>
+  <ol><li>Safariでアプリを開く</li><li>画面下の共有ボタン（四角から矢印が出たマーク）をタップ</li><li>「ホーム画面に追加」→「追加」をタップ</li></ol>
+  <h3>Android（Chrome）</h3>
+  <ol><li>Chromeでアプリを開く</li><li>右上の「⋮」メニューをタップ</li><li>「ホーム画面に追加」（または「アプリをインストール」）をタップ</li></ol>
+  <p>記録は開き方ごとに保存されます。毎回ホーム画面のアイコンから開くようにすると、記録が分かれずに済みます。</p>
+</section>
+
+<section id="measure">
+  <h2>正しい血圧の測り方</h2>
+  <p>毎日同じ条件で、朝と夜の1日2回測るのが基本です。条件をそろえると分析の精度も上がります。</p>
+  <table>
+    <tr><th>タイミング</th><th>測る条件</th></tr>
+    <tr><td>朝</td><td>起きてから1時間以内、トイレの後、朝食と薬の前</td></tr>
+    <tr><td>夜</td><td>寝る前</td></tr>
+  </table>
+  <ul>
+    <li>椅子に座って1〜2分休んでから測る</li>
+    <li>カフ（腕に巻く部分）は心臓と同じ高さにする</li>
+    <li>測る前30分はコーヒー・タバコ・入浴・運動を避ける</li>
+    <li>できれば2回測り、2回目もアプリに入力する（自動で平均します）</li>
+  </ul>
+</section>
+
+<section id="rec">
+  <h2>記録タブ：血圧を入力する</h2>
+  <p>上・下の血圧を入れて「記録する」を押すだけです。ほかの項目は任意です。</p>
+  <figure><img src="img/02_form.jpg" alt="記録画面" loading="lazy"><figcaption>朝夜を選び、数値と今日の状況を入れて「記録する」</figcaption></figure>
+  <ol>
+    <li><b>朝・夜・その他</b>：時刻から自動で選ばれます（4〜11時は朝、18時〜翌4時は夜）。違うときだけタップして直します。</li>
+    <li><b>最高（上）・最低（下）</b>を入力（必須）。<b>脈拍</b>は任意です。</li>
+    <li>2回測ったときは<b>「2回目も測った」</b>を開いて入力。平均した値が1件として保存されます。</li>
+    <li><b>今日の状況</b>で当てはまるものをタップ（複数可）。薬を飲んだ・前日お酒・塩分多め・睡眠不足・ストレス・運動した・寒い・カフェインの8種類です。</li>
+    <li>必要なら<b>メモ</b>を書き、過去の分を入れるときは<b>日時</b>を変える。</li>
+    <li><b>「記録する」</b>を押す。</li>
+  </ol>
+  <div class="note">「今日の状況」を続けて付けると、「お酒の日は何mmHg高いか」などを分析タブで比べられます。</div>
+</section>
+
+<section id="chart">
+  <h2>グラフタブ：推移を見る</h2>
+  <p>青い線が上の血圧、オレンジの線が下の血圧です。点線は目標値（初期値 125/75）で、線が点線より下にあれば目標達成です。</p>
+  <figure><img src="img/03_chart.jpg" alt="グラフ画面" loading="lazy"><figcaption>タップした日の値と判定が吹き出しで出ます</figcaption></figure>
+  <ul>
+    <li><b>期間の切り替え</b>：7日・30日・90日・1年</li>
+    <li><b>朝・夜の切り替え</b>：すべて・朝だけ・夜だけ</li>
+    <li><b>値を見る</b>：グラフをタップするか指でなぞる</li>
+  </ul>
+  <p>1日に複数回記録した日は、その日の平均が1つの点になります。下には脈拍の推移も表示されます。</p>
+</section>
+
+<section id="ana">
+  <h2>分析・対策タブ：傾向と対策を知る</h2>
+  <p>直近7日・14日・30日から期間を選ぶと、その間の記録を自動で分析します。期間中3回以上の記録が必要です。</p>
+  <figure><img src="img/04_analysis.jpg" alt="分析画面" loading="lazy"><figcaption>平均・判定・気づいたこと・状況ごとの差</figcaption></figure>
+  <h3>期間の判定</h3>
+  <p>朝の平均と夜の平均をさらに平均し、日本高血圧学会の家庭血圧の分類に当てはめます。上と下で分類が分かれるときは高い方を採用します。</p>
+  <table>
+    <tr><th>分類</th><th>上</th><th>下</th><th>表示</th></tr>
+    <tr><td>正常血圧</td><td>115未満</td><td>75未満</td><td><span class="dot" style="background:var(--good)"></span>✓</td></tr>
+    <tr><td>正常高値</td><td>115〜124</td><td>75未満</td><td><span class="dot" style="background:var(--good)"></span>✓</td></tr>
+    <tr><td>高値血圧</td><td>125〜134</td><td>75〜84</td><td><span class="dot" style="background:var(--warn)"></span>!</td></tr>
+    <tr><td>Ⅰ度高血圧</td><td>135〜144</td><td>85〜89</td><td><span class="dot" style="background:var(--serious)"></span>▲</td></tr>
+    <tr><td>Ⅱ度高血圧</td><td>145〜159</td><td>90〜99</td><td><span class="dot" style="background:var(--crit)"></span>▲</td></tr>
+    <tr><td>Ⅲ度高血圧</td><td>160以上</td><td>100以上</td><td><span class="dot" style="background:var(--crit)"></span>▲</td></tr>
+  </table>
+  <h3>気づいたこと</h3>
+  <p>次の点を自動でチェックし、当てはまるものだけ表示します。</p>
+  <table>
+    <tr><th>チェック</th><th>表示される条件</th></tr>
+    <tr><td>とても高い値</td><td>上180以上または下110以上があった</td></tr>
+    <tr><td>高血圧の基準</td><td>平均が135/85以上</td></tr>
+    <tr><td>早朝高血圧の傾向</td><td>朝が夜より上で15以上高い</td></tr>
+    <tr><td>前の期間との比較</td><td>上が3以上下がった／上がった</td></tr>
+    <tr><td>ばらつき</td><td>日による差が大きい</td></tr>
+    <tr><td>朝夜の記録不足</td><td>朝と夜がそろった日が半分未満</td></tr>
+    <tr><td>脈拍・低い値</td><td>脈拍の平均が100以上／上が90未満の回がある</td></tr>
+  </table>
+  <h3>状況ごとの差</h3>
+  <p>「今日の状況」を付けた日と付けなかった日で、上の血圧の平均を比べます。それぞれ2回以上あると表示されます。</p>
+  <h3>あなた向けの対策</h3>
+  <p>判定と状況ごとの差に合わせて、優先すべき対策を上に出します。その下に減塩・運動・節酒など基本の生活習慣が並びます。</p>
+  <figure><img src="img/05_action.jpg" alt="対策画面" loading="lazy"><figcaption>データから見た優先ポイントと基本の生活習慣</figcaption></figure>
+  <h3>目標値の設定</h3>
+  <p>初期値はガイドライン（JSH2025）の家庭血圧の目標 125/75 未満です。医師から別の目標を言われている場合は、画面下の「目標値の設定」で変更して「保存」を押します。</p>
+</section>
+
+<section id="log">
+  <h2>履歴タブ：記録の管理とバックアップ</h2>
+  <p>記録は新しい順に、日付ごとに並びます（画面には最新300件まで）。</p>
+  <figure><img src="img/06_log.jpg" alt="履歴画面" loading="lazy"><figcaption>✎で編集、🗑で削除</figcaption></figure>
+  <ul>
+    <li><b>編集</b>：「✎」を押すと記録タブに戻り、直して「変更を保存」</li>
+    <li><b>削除</b>：「🗑」を押し、確認画面で「削除する」。元には戻せません</li>
+    <li><b>CSVをコピー</b>：全件を表の形でコピー。メールやメモに貼り付けられます</li>
+  </ul>
+  <h3>バックアップ（履歴タブの一番下）</h3>
+  <figure><img src="img/07_backup.jpg" alt="バックアップ欄" loading="lazy"><figcaption>保存・CSV・復元の3つのボタン</figcaption></figure>
+  <table>
+    <tr><th>ボタン</th><th>使い方</th></tr>
+    <tr><td>バックアップを保存</td><td>全記録をファイル（.json）で保存。月に1回程度がおすすめ</td></tr>
+    <tr><td>CSVを保存</td><td>Excelで開けるファイル（.csv）で保存。受診のときに便利</td></tr>
+    <tr><td>バックアップから復元</td><td>保存した.jsonを選ぶと記録を戻す。今ある記録は消えず、足りない分だけ追加</td></tr>
+  </table>
+  <h3>機種変更のとき</h3>
+  <ol><li>古いスマホで「バックアップを保存」</li><li>そのファイルを新しいスマホに送る（メール、LINEの自分宛て、クラウドなど）</li><li>新しいスマホでアプリを開き、「バックアップから復元」でそのファイルを選ぶ</li></ol>
+</section>
+
+<section id="faq">
+  <h2>よくある質問</h2>
+  <table>
+    <tr><th>こんなとき</th><th>どうする？</th></tr>
+    <tr><td>記録が消えた</td><td>ブラウザの履歴やデータを消すと記録も消えます。バックアップがあれば「バックアップから復元」で戻せます</td></tr>
+    <tr><td>ホーム画面とブラウザで記録が違う</td><td>開き方ごとに保存場所が分かれることがあります。いつもホーム画面のアイコンから開いてください</td></tr>
+    <tr><td>スマホとパソコンで同じ記録を見たい</td><td>自動では同期されません。バックアップを保存して、もう一方で復元します</td></tr>
+    <tr><td>「記録を保存できません」と出る</td><td>プライベートモード（シークレットモード）をオフにして、通常のSafariやChromeで開いてください</td></tr>
+    <tr><td>分析が表示されない</td><td>選んだ期間に3回以上の記録が必要です。期間を30日にするか、記録を続けてください</td></tr>
+    <tr><td>入力を間違えた</td><td>履歴タブの「✎」で直すか、「🗑」で削除します</td></tr>
+    <tr><td>他の人にも使ってほしい</td><td>このアプリのURLを送るだけです。記録はそれぞれの端末に保存され、お互いには見えません</td></tr>
+  </table>
+</section>
+
+<section id="caution">
+  <h2>注意事項</h2>
+  <p>このアプリの判定や対策は、記録から機械的に計算した目安であり、医師の診断ではありません。</p>
+  <div class="note warn">上が180以上・下が110以上の値が出たときや、頭痛・胸の痛み・しびれ・ろれつが回らない等の症状があるときは、すぐに医療機関に連絡してください。</div>
+  <ul>
+    <li>家庭での平均が135/85以上続くときは、CSVやグラフを持って内科で相談しましょう</li>
+    <li>治療中の方は、薬の量や飲む時間を自分の判断で変えず、主治医に相談してください</li>
+    <li>野菜・果物を増やす対策は、腎臓の病気がある方は先に医師に相談してください</li>
+  </ul>
+  <p style="font-size:13px;color:var(--ink2)">分類と目標値は、日本高血圧学会『高血圧管理・治療ガイドライン2025』の家庭血圧の基準をもとにしています。</p>
+  <a class="btn" href="./">アプリに戻る</a>
+</section>
+
+</div>
+</body>
+</html>

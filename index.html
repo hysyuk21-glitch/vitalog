@@ -40,9 +40,12 @@ html,body{margin:0;background:var(--page);color:var(--ink);
   -webkit-text-size-adjust:100%;}
 body{padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(76px + env(safe-area-inset-bottom)) env(safe-area-inset-left);}
 .wrap{max-width:720px;margin:0 auto;padding:16px 14px 24px}
-header{display:flex;align-items:baseline;justify-content:space-between;margin:4px 2px 14px}
+header{display:flex;align-items:center;justify-content:space-between;margin:4px 2px 14px}
 h1{font-size:22px;margin:0;letter-spacing:.02em}
 .sub{color:var(--ink2);font-size:12px}
+.hdr-r{display:flex;align-items:center;gap:10px}
+.helpbtn{font-size:13px;font-weight:700;color:var(--accent);text-decoration:none;border:1px solid var(--accent);border-radius:999px;padding:4px 11px;white-space:nowrap}
+.helpbtn:active{background:var(--wash)}
 .card{background:var(--card);border:1px solid var(--ring);border-radius:14px;padding:14px;margin-bottom:12px}
 .card h2{font-size:15px;margin:0 0 10px}
 .card h3{font-size:14px;margin:14px 0 6px}
@@ -137,7 +140,7 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
 <div class="wrap">
   <header>
     <h1>血圧ノート</h1>
-    <span class="sub" id="syncState">読み込み中…</span>
+    <span class="hdr-r"><span class="sub" id="syncState">読み込み中…</span><a class="helpbtn" href="help.html">？ 使い方</a></span>
   </header>
   <div class="banner" id="banner"></div>
 
@@ -504,7 +507,7 @@ $("form").addEventListener("submit",function(e){
 function renderToday(){
   var el=$("todayCard");
   if(!readings.length){
-    el.innerHTML='<div class="empty">まだ記録がありません。<br>朝と夜、1日2回の記録から始めましょう。</div>'; return;
+    el.innerHTML='<div class="empty">まだ記録がありません。<br>朝と夜、1日2回の記録から始めましょう。<br><a href="help.html" style="color:var(--accent);font-weight:700">はじめての方は「使い方」へ ›</a></div>'; return;
   }
   var last=readings[readings.length-1];
   var today=dayKey(Date.now());
