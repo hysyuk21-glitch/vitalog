@@ -3,5 +3,5 @@
 // OAuth クライアントID（〜.apps.googleusercontent.com）を入れてください。
 // 空のままなら連携機能は表示されません。
 window.VITALOG_CONFIG = {
-  googleClientId: ""
+  googleClientId: "845618652690-5nteuu26ir84b7vuk9gjlksv91ma0qlt.apps.googleusercontent.com"
 };
