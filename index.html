@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>血圧ノート</title>
+<meta name="theme-color" content="#2a78d6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="血圧ノート">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  color-scheme: light;
+  --page:#f9f9f7; --surface:#fcfcfb; --card:#ffffff;
+  --ink:#0b0b0b; --ink2:#52514e; --muted:#8a897f;
+  --grid:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,0.10);
+  --s1:#2a78d6; --s2:#eb6834;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b;
+  --goodtext:#006300; --accent:#2a78d6; --accentInk:#fff;
+  --wash:rgba(42,120,214,0.08);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --card:#1a1a19;
+    --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86;
+    --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,0.10);
+    --s1:#3987e5; --s2:#d95926;
+    --goodtext:#0ca30c; --accent:#3987e5; --accentInk:#fff;
+    --wash:rgba(57,135,229,0.14);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Segoe UI",sans-serif;
+  -webkit-text-size-adjust:100%;}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(76px + env(safe-area-inset-bottom)) env(safe-area-inset-left);}
+.wrap{max-width:720px;margin:0 auto;padding:16px 14px 24px}
+header{display:flex;align-items:baseline;justify-content:space-between;margin:4px 2px 14px}
+h1{font-size:22px;margin:0;letter-spacing:.02em}
+.sub{color:var(--ink2);font-size:12px}
+.card{background:var(--card);border:1px solid var(--ring);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 10px}
+.card h3{font-size:14px;margin:14px 0 6px}
+.muted{color:var(--muted)} .ink2{color:var(--ink2)}
+.small{font-size:12px}
+.banner{font-size:12px;padding:10px 12px;border-radius:10px;background:var(--wash);color:var(--ink2);margin-bottom:12px;display:none}
+/* tabs */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--ring);
+  display:flex;padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:10}
+nav.tabs button{flex:1;border:0;background:none;color:var(--muted);font-size:11px;padding:6px 0;border-radius:10px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;font-family:inherit}
+nav.tabs button .ic{font-size:19px;line-height:1}
+nav.tabs button[aria-selected="true"]{color:var(--accent);font-weight:700;background:var(--wash)}
+section.view{display:none} section.view.on{display:block}
+/* form */
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+label.f{display:block;font-size:12px;color:var(--ink2);margin-bottom:4px}
+input,textarea,select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--axis);border-radius:10px;
+  padding:10px;width:100%;}
+input[type=number]{font-size:22px;font-weight:700;text-align:center;padding:10px 4px;font-variant-numeric:tabular-nums}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:flex;background:var(--surface);border:1px solid var(--axis);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;padding:8px 0;border-radius:8px;font:inherit;font-size:13px;color:var(--ink2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accentInk);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--axis);background:var(--surface);color:var(--ink2);border-radius:999px;padding:6px 11px;font:inherit;font-size:13px;cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--wash);color:var(--ink);font-weight:700}
+.row{display:flex;gap:8px;align-items:center}
+.btn{border:0;border-radius:12px;padding:13px 16px;font:inherit;font-weight:700;cursor:pointer;background:var(--accent);color:var(--accentInk);width:100%;font-size:16px}
+.btn.ghost{background:none;color:var(--ink2);border:1px solid var(--axis);font-weight:500;font-size:14px;padding:9px 12px;width:auto}
+.btn.danger{background:none;color:var(--crit);border:1px solid var(--crit);font-weight:500;font-size:14px;padding:9px 12px;width:auto}
+.btn:disabled{opacity:.5}
+details.more summary{cursor:pointer;color:var(--ink2);font-size:13px;margin:10px 0 6px}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--page);
+  padding:10px 16px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+.toast.on{opacity:1}
+/* status badge */
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 9px 3px 7px;border-radius:999px;border:1px solid var(--ring);color:var(--ink);background:var(--surface);white-space:nowrap}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+/* hero */
+.hero{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.big{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1}
+.big small{font-size:14px;font-weight:500;color:var(--ink2);margin-left:4px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:10px}
+.tile .k{font-size:11px;color:var(--ink2)}
+.tile .v{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
+.tile .d{font-size:11px;color:var(--ink2);margin-top:2px}
+/* chart */
+.chartbox{position:relative}
+svg.chart{width:100%;height:auto;display:block;touch-action:pan-y}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--ink2);margin:4px 2px 8px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:14px;height:3px;border-radius:2px;display:inline-block}
+.tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--ring);border-radius:10px;padding:8px 10px;font-size:12px;
+  box-shadow:0 4px 14px rgba(0,0,0,.12);display:none;min-width:130px;z-index:5}
+.tip b{font-variant-numeric:tabular-nums}
+/* list */
+.log{list-style:none;margin:0;padding:0}
+.log li{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--grid)}
+.log li:last-child{border-bottom:0}
+.log .when{font-size:12px;color:var(--ink2);width:76px;flex:none;line-height:1.35}
+.log .vals{font-weight:800;font-size:18px;font-variant-numeric:tabular-nums}
+.log .vals small{font-weight:500;font-size:12px;color:var(--ink2)}
+.log .meta{font-size:11px;color:var(--ink2);margin-top:2px}
+.log .grow{flex:1;min-width:0}
+.iconbtn{border:0;background:none;color:var(--muted);font-size:16px;cursor:pointer;padding:6px}
+.daysep{font-size:12px;font-weight:700;color:var(--ink2);padding:12px 2px 2px}
+/* analysis */
+.find{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--grid)}
+.find:last-child{border-bottom:0}
+.find .ic{flex:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff}
+.find .t{font-weight:700;font-size:14px}
+.find .b{font-size:13px;color:var(--ink2);margin-top:3px;line-height:1.55}
+.tips{margin:0;padding-left:18px}
+.tips li{margin:6px 0;font-size:13px;line-height:1.6}
+.tips li b{color:var(--ink)}
+.bar{height:8px;border-radius:4px;background:var(--grid);overflow:hidden;margin-top:6px}
+.bar > i{display:block;height:100%;border-radius:4px;background:var(--good)}
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+table.tbl th,table.tbl td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--grid)}
+table.tbl td.n{text-align:right;font-variant-numeric:tabular-nums}
+table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
+.empty{text-align:center;padding:26px 10px;color:var(--ink2);font-size:14px;line-height:1.7}
+.note{font-size:11px;color:var(--muted);line-height:1.6;margin-top:10px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:flex-end;justify-content:center;z-index:30}
+.modal.on{display:flex}
+.sheet{background:var(--card);border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));width:100%;max-width:520px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>血圧ノート</h1>
+    <span class="sub" id="syncState">読み込み中…</span>
+  </header>
+  <div class="banner" id="banner"></div>
+
+  <!-- 記録 -->
+  <section class="view on" id="v-rec">
+    <div class="card" id="todayCard"></div>
+
+    <div class="card">
+      <h2 id="formTitle">今日の血圧を記録</h2>
+      <form id="form" autocomplete="off">
+        <div class="seg" id="slotSeg" role="group" aria-label="測定タイミング">
+          <button type="button" data-v="morning">☀ 朝</button>
+          <button type="button" data-v="evening">🌙 夜</button>
+          <button type="button" data-v="other">その他</button>
+        </div>
+        <div style="height:12px"></div>
+        <div class="grid3">
+          <div><label class="f" for="sys">最高（上）</label><input id="sys" type="number" inputmode="numeric" min="50" max="260" placeholder="120" required></div>
+          <div><label class="f" for="dia">最低（下）</label><input id="dia" type="number" inputmode="numeric" min="30" max="180" placeholder="80" required></div>
+          <div><label class="f" for="pulse">脈拍</label><input id="pulse" type="number" inputmode="numeric" min="30" max="200" placeholder="70"></div>
+        </div>
+        <details class="more" id="second">
+          <summary>2回目も測った（平均して保存）</summary>
+          <div class="grid3">
+            <div><input id="sys2" type="number" inputmode="numeric" min="50" max="260" placeholder="上"></div>
+            <div><input id="dia2" type="number" inputmode="numeric" min="30" max="180" placeholder="下"></div>
+            <div><input id="pulse2" type="number" inputmode="numeric" min="30" max="200" placeholder="脈"></div>
+          </div>
+        </details>
+        <div style="height:6px"></div>
+        <label class="f">今日の状況（当てはまるものをタップ）</label>
+        <div class="chips" id="tagChips"></div>
+        <div style="height:10px"></div>
+        <label class="f" for="memo">メモ（任意）</label>
+        <input id="memo" type="text" maxlength="200" placeholder="例：寝不足、ラーメンを食べた">
+        <div style="height:10px"></div>
+        <label class="f" for="when">日時</label>
+        <input id="when" type="datetime-local">
+        <div style="height:14px"></div>
+        <button class="btn" id="saveBtn" type="submit">記録する</button>
+        <div class="row" style="margin-top:8px;display:none" id="editRow">
+          <button class="btn ghost" type="button" id="cancelEdit">編集をやめる</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>正しい測り方</h2>
+      <ul class="tips">
+        <li><b>朝</b>：起きてから1時間以内、トイレの後、朝食・服薬の前</li>
+        <li><b>夜</b>：寝る前</li>
+        <li>座って1〜2分休んでから、カフを心臓の高さで</li>
+        <li>できれば2回測って平均（上の「2回目」に入力すると自動で平均します）</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- グラフ -->
+  <section class="view" id="v-chart">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div class="seg" id="rangeSeg" style="flex:1;min-width:200px">
+          <button type="button" data-v="7">7日</button>
+          <button type="button" data-v="30">30日</button>
+          <button type="button" data-v="90">90日</button>
+          <button type="button" data-v="365">1年</button>
+        </div>
+        <div class="seg" id="slotFilter" style="flex:1;min-width:180px">
+          <button type="button" data-v="all">すべて</button>
+          <button type="button" data-v="morning">朝</button>
+          <button type="button" data-v="evening">夜</button>
+        </div>
+      </div>
+      <h2 id="chartTitle">血圧の推移</h2>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--s1)"></i>最高（上）</span>
+        <span><i class="sw" style="background:var(--s2)"></i>最低（下）</span>
+        <span><i class="sw" style="background:var(--axis);height:0;border-top:2px dashed var(--muted)"></i>目標ライン</span>
+      </div>
+      <div class="chartbox" id="chartBox">
+        <svg class="chart" id="chart" viewBox="0 0 680 260" role="img" aria-label="血圧の推移グラフ"></svg>
+        <div class="tip" id="tip"></div>
+      </div>
+      <p class="note">1日に複数回ある場合はその日の平均を表示しています。タップ・なぞると値が見られます。</p>
+    </div>
+    <div class="card">
+      <h2>脈拍の推移</h2>
+      <div class="chartbox" id="pulseBox">
+        <svg class="chart" id="pulseChart" viewBox="0 0 680 170" role="img" aria-label="脈拍の推移グラフ"></svg>
+        <div class="tip" id="tip2"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 分析・対策 -->
+  <section class="view" id="v-ana">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <h2 style="margin:0">分析</h2>
+        <div class="seg" id="anaSeg" style="min-width:210px">
+          <button type="button" data-v="7">直近7日</button>
+          <button type="button" data-v="14">14日</button>
+          <button type="button" data-v="30">30日</button>
+        </div>
+      </div>
+      <div style="height:12px"></div>
+      <div id="anaBody"></div>
+    </div>
+    <div class="card" id="actionCard">
+      <h2>あなた向けの対策</h2>
+      <div id="actionBody"></div>
+    </div>
+    <div class="card">
+      <h2>目標値の設定</h2>
+      <p class="small ink2" style="margin-top:0">家庭血圧の目標は、日本高血圧学会のガイドライン（JSH2025）で年齢を問わず<b>125/75 mmHg未満</b>が基本です。医師から別の目標を言われている場合は変更してください。</p>
+      <div class="grid3" style="grid-template-columns:1fr 1fr auto;align-items:end">
+        <div><label class="f" for="tSys">上の目標</label><input id="tSys" type="number" inputmode="numeric" min="90" max="180"></div>
+        <div><label class="f" for="tDia">下の目標</label><input id="tDia" type="number" inputmode="numeric" min="50" max="110"></div>
+        <button class="btn ghost" id="saveTarget" type="button" style="height:48px">保存</button>
+      </div>
+    </div>
+    <p class="note">この分析は記録から機械的に計算した目安で、診断ではありません。治療中の方は薬の量や飲み方を自己判断で変えず、主治医に相談してください。上が180以上・下が110以上の値が出たときや、頭痛・胸の痛み・しびれ・ろれつが回らない等の症状があるときは、すぐに医療機関に連絡してください。</p>
+  </section>
+
+  <!-- 履歴 -->
+  <section class="view" id="v-log">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">記録一覧 <span class="muted small" id="logCount"></span></h2>
+        <button class="btn ghost" id="copyCsv" type="button">CSVをコピー</button>
+      </div>
+      <div id="logBody"></div>
+    </div>
+    <div class="card">
+      <h2>バックアップ</h2>
+      <p class="small ink2" style="margin-top:0">記録はこのブラウザの中に保存されています。ブラウザの履歴やデータを消すと記録も消えるので、ときどきバックアップを保存してください。機種変更のときも、このファイルで記録を引き継げます。</p>
+      <div class="row" style="flex-wrap:wrap">
+        <button class="btn ghost" id="dlBackup" type="button">バックアップを保存</button>
+        <button class="btn ghost" id="dlCsv" type="button">CSVを保存</button>
+        <label class="btn ghost" style="display:inline-block;text-align:center">バックアップから復元<input id="restore" type="file" accept=".json,application/json" style="display:none"></label>
+      </div>
+      <p class="note" id="lastBackup"></p>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-v="v-rec" aria-selected="true"><span class="ic">✎</span>記録</button>
+  <button role="tab" data-v="v-chart" aria-selected="false"><span class="ic">📈</span>グラフ</button>
+  <button role="tab" data-v="v-ana" aria-selected="false"><span class="ic">💡</span>分析・対策</button>
+  <button role="tab" data-v="v-log" aria-selected="false"><span class="ic">☰</span>履歴</button>
+</nav>
+
+<div class="modal" id="confirmModal">
+  <div class="sheet">
+    <div style="font-weight:700;margin-bottom:6px">この記録を削除しますか？</div>
+    <div class="small ink2" id="confirmText" style="margin-bottom:14px"></div>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" id="cNo" type="button">やめる</button>
+      <button class="btn danger" id="cYes" type="button">削除する</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+// ---------- constants ----------
+var TAGS = [
+  {k:"med", label:"💊 薬を飲んだ"},
+  {k:"alcohol", label:"🍺 前日お酒"},
+  {k:"salty", label:"🧂 塩分多め"},
+  {k:"sleep", label:"😪 睡眠不足"},
+  {k:"stress", label:"😣 ストレス"},
+  {k:"exercise", label:"🚶 運動した"},
+  {k:"cold", label:"🥶 寒い"},
+  {k:"coffee", label:"☕ カフェイン"}
+];
+var TAGMAP = {}; TAGS.forEach(function(t){ TAGMAP[t.k]=t.label; });
+var SLOTLABEL = {morning:"朝", evening:"夜", other:"その他"};
+
+// JSH 家庭血圧の分類
+var CATS = [
+  {name:"正常血圧", color:"var(--good)", sev:0},
+  {name:"正常高値", color:"var(--good)", sev:1},
+  {name:"高値血圧", color:"var(--warn)", sev:2},
+  {name:"Ⅰ度高血圧", color:"var(--serious)", sev:3},
+  {name:"Ⅱ度高血圧", color:"var(--crit)", sev:4},
+  {name:"Ⅲ度高血圧", color:"var(--crit)", sev:5}
+];
+function sysLevel(s){ if(s>=160)return 5; if(s>=145)return 4; if(s>=135)return 3; if(s>=125)return 2; if(s>=115)return 1; return 0; }
+function diaLevel(d){ if(d>=100)return 5; if(d>=90)return 4; if(d>=85)return 3; if(d>=75)return 2; return 0; }
+function classify(s,d){ return CATS[Math.max(sysLevel(s), diaLevel(d))]; }
+function badge(s,d){
+  var c = classify(s,d);
+  var icon = c.sev<=1 ? "✓" : (c.sev==2 ? "!" : "▲");
+  return '<span class="badge"><i class="dot" style="background:'+c.color+'"></i>'+icon+' '+c.name+'</span>';
+}
+
+// ---------- state ----------
+var readings = [];      // sorted asc by t
+var target = {sys:125, dia:75};
+var db = null, mode = "connecting";
+var editingId = null;
+var ui = {slot:null, tags:{}, range:30, filter:"all", ana:14};
+var LSKEY = "bpnote.local.v1";
+
+// ---------- helpers ----------
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+function pad(n){ return (n<10?"0":"")+n; }
+function dayKey(t){ var d=new Date(t); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function fmtDay(t){ var d=new Date(t); return (d.getMonth()+1)+"/"+d.getDate()+"（"+"日月火水木金土"[d.getDay()]+"）"; }
+function fmtTime(t){ var d=new Date(t); return pad(d.getHours())+":"+pad(d.getMinutes()); }
+function toLocalInput(t){ var d=new Date(t); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes()); }
+function guessSlot(t){ var h=new Date(t).getHours(); if(h>=4&&h<11)return "morning"; if(h>=18||h<4)return "evening"; return "other"; }
+function avg(a){ if(!a.length)return null; var s=0; a.forEach(function(x){s+=x;}); return s/a.length; }
+function sd(a){ if(a.length<2)return null; var m=avg(a),s=0; a.forEach(function(x){s+=(x-m)*(x-m);}); return Math.sqrt(s/(a.length-1)); }
+function r0(x){ return x==null?"–":Math.round(x); }
+function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toast._t); toast._t=setTimeout(function(){t.classList.remove("on");},1800); }
+function startOfDay(t){ var d=new Date(t); d.setHours(0,0,0,0); return d.getTime(); }
+var DAY=86400000;
+
+function setSync(text){ $("syncState").textContent=text; }
+function showBanner(text){ var b=$("banner"); b.textContent=text; b.style.display=text?"block":"none"; }
+
+// ---------- storage ----------
+function normalize(id, o){
+  if(!o || typeof o.t!=="number" || typeof o.sys!=="number" || typeof o.dia!=="number") return null;
+  return {id:id, t:o.t, sys:o.sys, dia:o.dia, pulse:(typeof o.pulse==="number"?o.pulse:null),
+    slot:(o.slot in SLOTLABEL?o.slot:guessSlot(o.t)), tags:Array.isArray(o.tags)?o.tags.filter(function(k){return TAGMAP[k];}):[],
+    memo:typeof o.memo==="string"?o.memo:"", n:(typeof o.n==="number"?o.n:1)};
+}
+function loadLocal(){
+  try{ var raw=localStorage.getItem(LSKEY); if(!raw)return; var o=JSON.parse(raw);
+    readings=(o.readings||[]).map(function(r){return normalize(r.id,r);}).filter(Boolean).sort(function(a,b){return a.t-b.t;});
+    if(o.target) target=o.target;
+  }catch(e){}
+}
+function saveLocal(){
+  try{ localStorage.setItem(LSKEY, JSON.stringify({readings:readings,target:target})); }catch(e){}
+}
+function newId(){ return "r"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+function putReading(r){
+  var body={t:r.t,sys:r.sys,dia:r.dia,pulse:r.pulse,slot:r.slot,tags:r.tags,memo:r.memo,n:r.n};
+  if(mode==="db"){
+    return db.collection("bp").doc(r.id).set(body);
+  }
+  var i=readings.findIndex(function(x){return x.id===r.id;});
+  if(i>=0) readings[i]=r; else readings.push(r);
+  readings.sort(function(a,b){return a.t-b.t;});
+  saveLocal(); renderAll();
+  return Promise.resolve();
+}
+function removeReading(id){
+  if(mode==="db") return db.collection("bp").doc(id).delete();
+  readings=readings.filter(function(x){return x.id!==id;}); saveLocal(); renderAll();
+  return Promise.resolve();
+}
+function putTarget(){
+  if(mode==="db") return db.doc("settings/target").set({sys:target.sys,dia:target.dia});
+  saveLocal(); return Promise.resolve();
+}
+
+function errMsg(e){
+  var c=e&&e.code;
+  if(c==="quota_exceeded") return "保存容量の上限に達しました。古い記録を削除してください。";
+  if(c==="invalid_argument") return "保存できませんでした（このページを編集できるのは作成者だけです）。";
+  return "保存できませんでした。通信状態を確認してもう一度お試しください。";
+}
+
+function connect(){
+  fallback(); return;
+  if(!window.claude || typeof window.claude.use!=="function"){ fallback(); return; }
+  var timer=setTimeout(function(){
+    if(mode==="connecting"){ setSync("接続待ち…"); showBanner("保存先にまだ接続できていません。通信状態をご確認ください。"); }
+  },10000);
+  window.claude.use("db").then(function(d){
+    if(!d){ clearTimeout(timer); fallback(); return; }
+    db=d; mode="db";
+    db.collection("bp").orderBy("t","desc").limit(1000).onSnapshot(function(snap){
+      clearTimeout(timer);
+      readings=snap.docs.map(function(doc){return normalize(doc.id, doc.data());}).filter(Boolean).sort(function(a,b){return a.t-b.t;});
+      setSync(snap.metadata.fromCache ? "同期中…" : "保存済み ✓");
+      if(!snap.metadata.fromCache) showBanner("");
+      renderAll();
+    }, function(e){
+      clearTimeout(timer); setSync("オフライン");
+      showBanner("記録の読み込みが止まりました。ページを開き直してください。");
+    });
+    db.doc("settings/target").onSnapshot(function(s){
+      if(s.exists){ var o=s.data(); if(typeof o.sys==="number"&&typeof o.dia==="number"){ target={sys:o.sys,dia:o.dia}; renderAll(); } }
+    }, function(){});
+  }, function(){ clearTimeout(timer); fallback(); });
+}
+function fallback(){
+  mode="local"; loadLocal(); setSync("この端末に保存");
+  var ok=true; try{ localStorage.setItem("bpnote.test","1"); localStorage.removeItem("bpnote.test"); }catch(e){ ok=false; }
+  showBanner(ok ? "" : "このブラウザでは記録を保存できません。別のブラウザ（Chrome・Safariなど）で開いてください。");
+  renderAll();
+}
+
+// ---------- 記録 form ----------
+function setSlot(v){ ui.slot=v; [].forEach.call($("slotSeg").children,function(b){b.setAttribute("aria-pressed", b.dataset.v===v?"true":"false");}); }
+function renderTagChips(){
+  $("tagChips").innerHTML = TAGS.map(function(t){
+    return '<button type="button" class="chip" data-k="'+t.k+'" aria-pressed="'+(ui.tags[t.k]?"true":"false")+'">'+t.label+'</button>';
+  }).join("");
+}
+$("tagChips").addEventListener("click",function(e){
+  var b=e.target.closest(".chip"); if(!b)return; var k=b.dataset.k; ui.tags[k]=!ui.tags[k]; b.setAttribute("aria-pressed", ui.tags[k]?"true":"false");
+});
+$("slotSeg").addEventListener("click",function(e){ var b=e.target.closest("button"); if(b) setSlot(b.dataset.v); });
+$("when").addEventListener("change",function(){ var t=new Date($("when").value).getTime(); if(!isNaN(t) && !editingId) setSlot(guessSlot(t)); });
+
+function resetForm(){
+  editingId=null;
+  ["sys","dia","pulse","sys2","dia2","pulse2","memo"].forEach(function(id){$(id).value="";});
+  $("second").open=false; ui.tags={}; renderTagChips();
+  var now=Date.now(); $("when").value=toLocalInput(now); setSlot(guessSlot(now));
+  $("formTitle").textContent="今日の血圧を記録"; $("saveBtn").textContent="記録する"; $("editRow").style.display="none";
+}
+function startEdit(id){
+  var r=readings.find(function(x){return x.id===id;}); if(!r)return;
+  editingId=id; switchTab("v-rec");
+  $("sys").value=r.sys; $("dia").value=r.dia; $("pulse").value=r.pulse==null?"":r.pulse;
+  ["sys2","dia2","pulse2"].forEach(function(i){$(i).value="";}); $("second").open=false;
+  $("memo").value=r.memo; $("when").value=toLocalInput(r.t); setSlot(r.slot);
+  ui.tags={}; r.tags.forEach(function(k){ui.tags[k]=true;}); renderTagChips();
+  $("formTitle").textContent="記録を編集"; $("saveBtn").textContent="変更を保存"; $("editRow").style.display="flex";
+  window.scrollTo({top:$("form").getBoundingClientRect().top+window.scrollY-80,behavior:"smooth"});
+}
+$("cancelEdit").addEventListener("click",resetForm);
+
+function num(id){ var v=$(id).value.trim(); if(v==="")return null; var n=Number(v); return isFinite(n)?n:NaN; }
+$("form").addEventListener("submit",function(e){
+  e.preventDefault();
+  var s=num("sys"), d=num("dia"), p=num("pulse"), s2=num("sys2"), d2=num("dia2"), p2=num("pulse2");
+  if(s==null||d==null||isNaN(s)||isNaN(d)){ toast("上と下の血圧を入力してください"); return; }
+  if(s<50||s>260||d<30||d>180){ toast("数値を確認してください"); return; }
+  if(d>=s){ toast("上の値は下の値より大きくなります"); return; }
+  var n=1;
+  if(s2!=null && d2!=null && !isNaN(s2) && !isNaN(d2)){
+    if(s2<50||s2>260||d2<30||d2>180||d2>=s2){ toast("2回目の数値を確認してください"); return; }
+    s=(s+s2)/2; d=(d+d2)/2; n=2;
+    if(p!=null && p2!=null && !isNaN(p) && !isNaN(p2)) p=(p+p2)/2;
+  }
+  if(p!=null && (isNaN(p)||p<30||p>200)){ toast("脈拍を確認してください"); return; }
+  var t=new Date($("when").value).getTime(); if(isNaN(t)) t=Date.now();
+  var r={id:editingId||newId(), t:t, sys:Math.round(s), dia:Math.round(d), pulse:p==null?null:Math.round(p),
+    slot:ui.slot||guessSlot(t), tags:TAGS.map(function(x){return x.k;}).filter(function(k){return ui.tags[k];}),
+    memo:$("memo").value.trim().slice(0,200), n:n};
+  var btn=$("saveBtn"); btn.disabled=true;
+  var wasEdit=!!editingId;
+  putReading(r).then(function(){
+    btn.disabled=false; resetForm();
+    toast(wasEdit?"変更しました":"記録しました（"+r.sys+"/"+r.dia+"）");
+    if(r.sys>=180||r.dia>=110) toast("かなり高い値です。症状があればすぐ受診を");
+  }, function(err){ btn.disabled=false; toast(errMsg(err)); });
+});
+
+function renderToday(){
+  var el=$("todayCard");
+  if(!readings.length){
+    el.innerHTML='<div class="empty">まだ記録がありません。<br>朝と夜、1日2回の記録から始めましょう。</div>'; return;
+  }
+  var last=readings[readings.length-1];
+  var today=dayKey(Date.now());
+  var todays=readings.filter(function(r){return dayKey(r.t)===today;});
+  var hasM=todays.some(function(r){return r.slot==="morning";}), hasE=todays.some(function(r){return r.slot==="evening";});
+  // streak: consecutive days with any record ending today or yesterday
+  var days={}; readings.forEach(function(r){days[dayKey(r.t)]=1;});
+  var streak=0, d=startOfDay(Date.now()); if(!days[dayKey(d)]) d-=DAY;
+  while(days[dayKey(d)]){ streak++; d-=DAY; }
+  var w=readings.filter(function(r){return r.t>=startOfDay(Date.now())-6*DAY;});
+  var wm=w.filter(function(r){return r.slot==="morning";}), we=w.filter(function(r){return r.slot==="evening";});
+  function pair(arr){ return arr.length? r0(avg(arr.map(function(r){return r.sys;})))+"/"+r0(avg(arr.map(function(r){return r.dia;}))) : "–"; }
+  el.innerHTML =
+    '<div class="small ink2" style="margin-bottom:6px">最新の記録 · '+fmtDay(last.t)+' '+fmtTime(last.t)+'（'+SLOTLABEL[last.slot]+'）</div>'+
+    '<div class="hero"><div class="big">'+last.sys+'<span style="color:var(--muted);font-weight:500">/</span>'+last.dia+'<small>mmHg</small></div>'+
+    '<div style="padding-bottom:4px">'+badge(last.sys,last.dia)+(last.pulse!=null?' <span class="small ink2">脈 '+last.pulse+'</span>':'')+'</div></div>'+
+    '<div style="height:12px"></div>'+
+    '<div class="tiles">'+
+      '<div class="tile"><div class="k">朝の平均（7日）</div><div class="v">'+pair(wm)+'</div><div class="d">'+wm.length+'回</div></div>'+
+      '<div class="tile"><div class="k">夜の平均（7日）</div><div class="v">'+pair(we)+'</div><div class="d">'+we.length+'回</div></div>'+
+      '<div class="tile"><div class="k">連続記録</div><div class="v">'+streak+'日</div><div class="d">今日：朝'+(hasM?"✓":"—")+' 夜'+(hasE?"✓":"—")+'</div></div>'+
+    '</div>';
+}
+
+// ---------- chart ----------
+function dailySeries(days, filter, field){
+  var from=startOfDay(Date.now())-(days-1)*DAY;
+  var by={};
+  readings.forEach(function(r){
+    if(r.t<from) return; if(filter!=="all" && r.slot!==filter) return;
+    if(field==="pulse" && r.pulse==null) return;
+    var k=startOfDay(r.t); (by[k]=by[k]||[]).push(r);
+  });
+  return Object.keys(by).map(Number).sort(function(a,b){return a-b;}).map(function(k){
+    var a=by[k];
+    return {t:k, sys:avg(a.map(function(r){return r.sys;})), dia:avg(a.map(function(r){return r.dia;})),
+      pulse:avg(a.filter(function(r){return r.pulse!=null;}).map(function(r){return r.pulse;})), n:a.length};
+  });
+}
+function niceTicks(lo,hi,step){ var t=[]; for(var v=Math.ceil(lo/step)*step; v<=hi; v+=step) t.push(v); return t; }
+
+function drawChart(svg, tipEl, opts){
+  var W=Math.max(300, Math.round(svg.parentNode.clientWidth||680)), H=opts.h, m={l:34,r:(opts.refs&&opts.refs.length?52:12),t:12,b:26};
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  var days=ui.range, from=startOfDay(Date.now())-(days-1)*DAY, to=startOfDay(Date.now());
+  var data=opts.data;
+  var iw=W-m.l-m.r, ih=H-m.t-m.b;
+  function x(t){ return m.l + (days<=1?iw/2:(t-from)/(to-from||1)*iw); }
+  var vals=[]; data.forEach(function(d){ opts.series.forEach(function(s){ if(d[s.key]!=null) vals.push(d[s.key]); }); });
+  (opts.refs||[]).forEach(function(r){vals.push(r.v);});
+  var lo=Math.min.apply(null, vals.length?vals:[60]), hi=Math.max.apply(null, vals.length?vals:[140]);
+  lo=Math.floor((lo-8)/10)*10; hi=Math.ceil((hi+8)/10)*10; if(hi-lo<40) hi=lo+40;
+  function y(v){ return m.t + ih - (v-lo)/(hi-lo)*ih; }
+  var g='';
+  var step=(hi-lo)>100?20:10;
+  niceTicks(lo,hi,step).forEach(function(v){
+    g+='<line x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="var(--grid)" stroke-width="1"/>';
+    g+='<text x="'+(m.l-6)+'" y="'+(y(v)+4)+'" text-anchor="end" font-size="11" fill="var(--muted)">'+v+'</text>';
+  });
+  g+='<line x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+(m.t+ih)+'" y2="'+(m.t+ih)+'" stroke="var(--axis)" stroke-width="1"/>';
+  // x ticks
+  var nT = days<=7?7:(W<480?5:6);
+  for(var i=0;i<nT;i++){
+    var tt = days<=7 ? from+i*DAY : from + Math.round((to-from)/(nT-1)*i/DAY)*DAY;
+    var d=new Date(tt);
+    g+='<text x="'+x(tt)+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="var(--muted)">'+(d.getMonth()+1)+'/'+d.getDate()+'</text>';
+  }
+  (opts.refs||[]).forEach(function(r){
+    g+='<line x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+y(r.v)+'" y2="'+y(r.v)+'" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>';
+    g+='<text x="'+(W-m.r+4)+'" y="'+(y(r.v)+4)+'" font-size="10" fill="var(--ink2)">'+r.label+'</text>';
+  });
+  if(!data.length){
+    g+='<text x="'+(W/2)+'" y="'+(H/2)+'" text-anchor="middle" font-size="14" fill="var(--ink2)">この期間の記録はまだありません</text>';
+    svg.innerHTML=g; svg.onpointermove=null; tipEl.style.display="none"; return;
+  }
+  var showDots = data.length<=45;
+  var rdot = data.length>20?3:4;
+  opts.series.forEach(function(s){
+    var pts=data.filter(function(d){return d[s.key]!=null;});
+    if(pts.length>1){
+      var dstr=pts.map(function(d,i){return (i?"L":"M")+x(d.t).toFixed(1)+","+y(d[s.key]).toFixed(1);}).join("");
+      g+='<path d="'+dstr+'" fill="none" stroke="'+s.color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+    }
+    if(showDots || pts.length===1) pts.forEach(function(d){
+      g+='<circle cx="'+x(d.t)+'" cy="'+y(d[s.key])+'" r="'+rdot+'" fill="'+s.color+'" stroke="var(--card)" stroke-width="1.5"/>';
+    });
+  });
+  g+='<g id="hov"></g><rect x="'+m.l+'" y="'+m.t+'" width="'+iw+'" height="'+ih+'" fill="transparent"/>';
+  svg.innerHTML=g;
+  var hov=svg.querySelector("#hov");
+  function move(ev){
+    var rect=svg.getBoundingClientRect(); var px=(ev.clientX-rect.left)/rect.width*W;
+    var best=null,bd=1e9; data.forEach(function(d){ var dd=Math.abs(x(d.t)-px); if(dd<bd){bd=dd;best=d;} });
+    if(!best){return;}
+    var cx=x(best.t), h='<line x1="'+cx+'" x2="'+cx+'" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="var(--axis)" stroke-width="1"/>';
+    opts.series.forEach(function(s){ if(best[s.key]!=null) h+='<circle cx="'+cx+'" cy="'+y(best[s.key])+'" r="5" fill="'+s.color+'" stroke="var(--card)" stroke-width="2"/>'; });
+    hov.innerHTML=h;
+    tipEl.innerHTML='<div class="small ink2" style="margin-bottom:3px">'+fmtDay(best.t)+(best.n>1?' · '+best.n+'回の平均':'')+'</div>'+opts.tip(best);
+    tipEl.style.display="block";
+    var bw=svg.parentNode.clientWidth, left=cx/W*rect.width+12;
+    if(left+tipEl.offsetWidth>bw) left=cx/W*rect.width-tipEl.offsetWidth-12;
+    tipEl.style.left=Math.max(0,left)+"px"; tipEl.style.top="8px";
+  }
+  svg.onpointermove=move; svg.onpointerdown=move;
+  svg.onpointerleave=function(){ hov.innerHTML=""; tipEl.style.display="none"; };
+}
+
+function renderChart(){
+  var label={7:"7日",30:"30日",90:"90日",365:"1年"}[ui.range];
+  $("chartTitle").textContent="血圧の推移（"+label+"・"+({all:"すべて",morning:"朝",evening:"夜"}[ui.filter])+"）";
+  var data=dailySeries(ui.range, ui.filter, "bp");
+  drawChart($("chart"), $("tip"), {h:260, data:data,
+    series:[{key:"sys",color:"var(--s1)"},{key:"dia",color:"var(--s2)"}],
+    refs:[{v:target.sys,label:"目標"+target.sys},{v:target.dia,label:"目標"+target.dia}],
+    tip:function(d){ return '<div><i class="sw" style="background:var(--s1)"></i> 上 <b>'+Math.round(d.sys)+'</b></div><div><i class="sw" style="background:var(--s2)"></i> 下 <b>'+Math.round(d.dia)+'</b></div><div style="margin-top:4px">'+badge(d.sys,d.dia)+'</div>'; }
+  });
+  var pdata=dailySeries(ui.range, ui.filter, "pulse");
+  drawChart($("pulseChart"), $("tip2"), {h:170, data:pdata,
+    series:[{key:"pulse",color:"var(--s1)"}], refs:[],
+    tip:function(d){ return '脈拍 <b>'+Math.round(d.pulse)+'</b> 回/分'; }
+  });
+}
+function bindSeg(id, key, cb){
+  var el=$(id);
+  function paint(){ [].forEach.call(el.children,function(b){ b.setAttribute("aria-pressed", String(ui[key])===b.dataset.v?"true":"false"); }); }
+  el.addEventListener("click",function(e){ var b=e.target.closest("button"); if(!b)return; var v=b.dataset.v; ui[key]=isNaN(Number(v))?v:Number(v); paint(); cb(); });
+  paint();
+}
+
+// ---------- analysis ----------
+function analyze(days){
+  var now=Date.now(), from=startOfDay(now)-(days-1)*DAY, prevFrom=from-days*DAY;
+  var cur=readings.filter(function(r){return r.t>=from;});
+  var prev=readings.filter(function(r){return r.t>=prevFrom && r.t<from;});
+  var M=cur.filter(function(r){return r.slot==="morning";}), E=cur.filter(function(r){return r.slot==="evening";});
+  var S=function(a){return a.map(function(r){return r.sys;});}, D=function(a){return a.map(function(r){return r.dia;});};
+  var res={days:days, n:cur.length, cur:cur,
+    all:{s:avg(S(cur)), d:avg(D(cur))}, m:{s:avg(S(M)), d:avg(D(M)), n:M.length}, e:{s:avg(S(E)), d:avg(D(E)), n:E.length},
+    prev:{s:avg(S(prev)), d:avg(D(prev)), n:prev.length}, sdS:sd(S(cur)),
+    pulse:avg(cur.filter(function(r){return r.pulse!=null;}).map(function(r){return r.pulse;})),
+    hit:cur.filter(function(r){return r.sys<target.sys && r.dia<target.dia;}).length,
+    max:cur.reduce(function(a,r){return (!a||r.sys>a.sys)?r:a;},null),
+    severe:cur.filter(function(r){return r.sys>=180||r.dia>=110;}),
+    low:cur.filter(function(r){return r.sys<90;})
+  };
+  var dset={}; cur.forEach(function(r){dset[dayKey(r.t)]=dset[dayKey(r.t)]||{}; dset[dayKey(r.t)][r.slot]=1;});
+  res.daysLogged=Object.keys(dset).length;
+  res.daysBoth=Object.keys(dset).filter(function(k){return dset[k].morning&&dset[k].evening;}).length;
+  // basis for classification: average of morning & evening means if both, else overall
+  if(res.m.n && res.e.n){ res.basis={s:(res.m.s+res.e.s)/2, d:(res.m.d+res.e.d)/2}; }
+  else res.basis=res.all;
+  // tag effects (compare within same slot type to reduce bias: use all readings in window, at least 2 each)
+  var tagFx=[];
+  TAGS.forEach(function(t){
+    var w=cur.filter(function(r){return r.tags.indexOf(t.k)>=0;}), wo=cur.filter(function(r){return r.tags.indexOf(t.k)<0;});
+    if(w.length>=2 && wo.length>=2){ tagFx.push({k:t.k, label:t.label, n:w.length, diff:avg(S(w))-avg(S(wo)), with:avg(S(w)), without:avg(S(wo))}); }
+  });
+  tagFx.sort(function(a,b){return b.diff-a.diff;});
+  res.tagFx=tagFx;
+  return res;
+}
+
+function finding(color, icon, title, body){
+  return '<div class="find"><div class="ic" style="background:'+color+'">'+icon+'</div><div><div class="t">'+title+'</div><div class="b">'+body+'</div></div></div>';
+}
+
+function renderAnalysis(){
+  var a=analyze(ui.ana), el=$("anaBody"), act=$("actionBody");
+  if(a.n<3){
+    el.innerHTML='<div class="empty">分析には直近'+ui.ana+'日間で3回以上の記録が必要です。<br>（いま '+a.n+' 回）</div>';
+    act.innerHTML='<div class="small ink2">記録がたまると、あなたのデータに合わせた対策がここに表示されます。まずは基本の生活習慣から：</div>'+baseTips([]);
+    return;
+  }
+  var c=classify(a.basis.s,a.basis.d);
+  var rate=Math.round(a.hit/a.n*100);
+  var h='';
+  h+='<div class="tiles" style="margin-bottom:12px">'+
+     '<div class="tile"><div class="k">朝の平均</div><div class="v">'+(a.m.n?r0(a.m.s)+'/'+r0(a.m.d):'–')+'</div><div class="d">'+a.m.n+'回</div></div>'+
+     '<div class="tile"><div class="k">夜の平均</div><div class="v">'+(a.e.n?r0(a.e.s)+'/'+r0(a.e.d):'–')+'</div><div class="d">'+a.e.n+'回</div></div>'+
+     '<div class="tile"><div class="k">目標達成率</div><div class="v">'+rate+'%</div><div class="d">'+a.hit+'/'+a.n+'回が目標未満</div></div>'+
+     '</div>';
+  h+='<div class="small ink2">期間の判定（家庭血圧の分類）</div><div style="margin:6px 0 4px">'+badge(a.basis.s,a.basis.d)+' <span class="small ink2">平均 '+r0(a.basis.s)+'/'+r0(a.basis.d)+' mmHg</span></div>';
+  h+='<div class="bar" aria-hidden="true"><i style="width:'+rate+'%"></i></div>';
+  h+='<h3>気づいたこと</h3>';
+  var fs=[], flags=[];
+  if(a.severe.length){
+    fs.push(finding("var(--crit)","!","とても高い値が "+a.severe.length+" 回ありました","上180以上・下110以上は早めに医療機関へ相談が必要なレベルです。頭痛・胸痛・しびれ等の症状があればすぐ受診してください。"));
+    flags.push("severe");
+  }
+  if(a.basis.s>=135||a.basis.d>=85){
+    fs.push(finding("var(--serious)","▲","家庭血圧の平均が高血圧の基準（135/85以上）です","この状態が続くなら、記録を持って内科を受診するのがおすすめです。治療中なら次の受診時にこのグラフを見せましょう。"));
+    flags.push("htn");
+  } else if(a.basis.s>=target.sys||a.basis.d>=target.dia){
+    fs.push(finding("var(--warn)","!","目標（"+target.sys+"/"+target.dia+"）を少し上回っています","生活習慣の見直しで下げられる範囲です。下の対策から1〜2個に絞って続けてみましょう。"));
+    flags.push("above");
+  } else {
+    fs.push(finding("var(--good)","✓","平均は目標の範囲内です","良い状態です。今の習慣と記録を続けましょう。"));
+  }
+  if(a.m.n>=2 && a.e.n>=2){
+    var diff=a.m.s-a.e.s;
+    if(diff>=15){ fs.push(finding("var(--warn)","☀","朝が夜より "+r0(diff)+" mmHg 高め","朝に血圧が上がる「早朝高血圧」の傾向があります。脳卒中・心筋梗塞は朝に起こりやすいため、要チェックのポイントです。")); flags.push("morning"); }
+    else if(diff<=-15){ fs.push(finding("var(--warn)","🌙","夜が朝より "+r0(-diff)+" mmHg 高め","夜の入浴・飲酒・食後すぐの測定などで上下することがあります。測る時間をそろえて様子を見ましょう。")); flags.push("evening"); }
+  }
+  if(a.prev.n>=3){
+    var tr=a.all.s-a.prev.s;
+    if(tr<=-3) fs.push(finding("var(--good)","↓","前の"+a.days+"日間より上が "+r0(-tr)+" 下がりました","取り組みの効果が出ているかもしれません。この調子で。"));
+    else if(tr>=3){ fs.push(finding("var(--warn)","↑","前の"+a.days+"日間より上が "+r0(tr)+" 上がりました","季節（寒さ）、忙しさ、食事の変化などに心当たりがないか振り返ってみましょう。")); flags.push("rising"); }
+    else fs.push(finding("var(--axis)","→","前の"+a.days+"日間とほぼ同じ水準です","前の期間 平均 "+r0(a.prev.s)+"/"+r0(a.prev.d)+"。"));
+  }
+  if(a.sdS!=null && a.n>=5 && a.sdS>=12){ fs.push(finding("var(--warn)","〜","日によるばらつきが大きめ（±"+r0(a.sdS)+"）","測る時間・姿勢がそろっているか確認を。ばらつきが大きい状態が続く場合も医師に伝えましょう。")); flags.push("variable"); }
+  if(a.daysLogged && a.daysBoth/a.daysLogged<0.5 && a.days>=7){ fs.push(finding("var(--axis)","i","朝夜そろった日が少なめ（"+a.daysBoth+"/"+a.daysLogged+"日）","判定の精度を上げるため、朝と夜の両方を記録できると理想的です。")); }
+  if(a.pulse!=null && a.pulse>=100){ fs.push(finding("var(--warn)","♥","脈拍の平均が "+r0(a.pulse)+" 回/分と速め","安静にしてから測っているか確認を。続く場合は医師に相談しましょう。")); }
+  if(a.low.length){ fs.push(finding("var(--warn)","↓","上が90未満の低い値が "+a.low.length+" 回","ふらつき・めまいがある場合は医師に相談してください（降圧薬服用中は特に）。")); }
+  h+=fs.join("");
+  if(a.tagFx.length){
+    h+='<h3>状況ごとの差（上の血圧）</h3><table class="tbl"><thead><tr><th>状況</th><th style="text-align:right">あり</th><th style="text-align:right">なし</th><th style="text-align:right">差</th></tr></thead><tbody>';
+    a.tagFx.forEach(function(t){
+      var sign=t.diff>=0?"+":"−";
+      h+='<tr><td>'+t.label+' <span class="muted small">'+t.n+'回</span></td><td class="n">'+r0(t.with)+'</td><td class="n">'+r0(t.without)+'</td><td class="n"><b>'+sign+Math.abs(Math.round(t.diff))+'</b></td></tr>';
+    });
+    h+='</tbody></table><p class="note">回数が少ないうちは偶然の差も混ざります。傾向の参考にしてください。</p>';
+  } else {
+    h+='<p class="note">記録時に「前日お酒」「睡眠不足」などをタップしておくと、どの習慣が血圧に影響しているかをここで比べられます。</p>';
+  }
+  el.innerHTML=h;
+
+  // actions
+  var hurt=a.tagFx.filter(function(t){return t.diff>=5;}).map(function(t){return t.k;});
+  var helps=a.tagFx.filter(function(t){return t.k==="exercise" && t.diff<=-3;});
+  var ah='';
+  if(flags.indexOf("severe")>=0 || flags.indexOf("htn")>=0){
+    ah+='<div class="find" style="border:0;padding-top:0"><div class="ic" style="background:var(--crit)">!</div><div><div class="t">まずは受診・相談を</div><div class="b">家庭での平均が高血圧の範囲です。生活習慣の改善と並行して、医師に「履歴」タブのCSVやグラフを見せて相談しましょう。治療中の方は薬を自己判断で変えないでください。</div></div></div>';
+  }
+  var prio=[];
+  if(hurt.indexOf("alcohol")>=0) prio.push('<li><b>お酒の日は上が '+r0(a.tagFx.find(function(t){return t.k==="alcohol";}).diff)+' 高い</b> → 休肝日を週2日つくる／量を日本酒1合・ビール中瓶1本程度までに</li>');
+  if(hurt.indexOf("salty")>=0) prio.push('<li><b>塩分多めの日は上が '+r0(a.tagFx.find(function(t){return t.k==="salty";}).diff)+' 高い</b> → 麺の汁を残す、しょうゆは「かける」より「つける」、漬物・加工肉を控える</li>');
+  if(hurt.indexOf("sleep")>=0) prio.push('<li><b>睡眠不足の日は上が '+r0(a.tagFx.find(function(t){return t.k==="sleep";}).diff)+' 高い</b> → 就寝時刻を固定して6〜7時間以上を目標に。寝る前のスマホ・飲酒を控える</li>');
+  if(hurt.indexOf("stress")>=0) prio.push('<li><b>ストレスの日は上が '+r0(a.tagFx.find(function(t){return t.k==="stress";}).diff)+' 高い</b> → ゆっくりした腹式呼吸（4秒吸って6秒吐く）を数分、軽い散歩で切り替える</li>');
+  if(hurt.indexOf("cold")>=0) prio.push('<li><b>寒い日は上が '+r0(a.tagFx.find(function(t){return t.k==="cold";}).diff)+' 高い</b> → 寝室・トイレ・脱衣所を暖める、朝起きてすぐ寒い所に出ない</li>');
+  if(hurt.indexOf("coffee")>=0) prio.push('<li><b>カフェイン後は高め</b> → 測定前30分はコーヒー・お茶を避けて測ると正確です</li>');
+  if(helps.length) prio.push('<li><b>運動した日は上が '+r0(-helps[0].diff)+' 低い</b> → 効果が出ています。続けましょう</li>');
+  if(flags.indexOf("morning")>=0) prio.push('<li><b>早朝高血圧の対策</b> → 夜の飲酒と塩分を控える、寝室を冷やしすぎない、起床後すぐ急に動かない。服薬中なら飲む時間帯について医師に相談</li>');
+  if(flags.indexOf("variable")>=0) prio.push('<li><b>測り方をそろえる</b> → 毎回同じ時間・同じ腕・座って1〜2分休んでから、2回測って平均</li>');
+  if(prio.length) ah+='<h3 style="margin-top:4px">あなたのデータから見た優先ポイント</h3><ul class="tips">'+prio.join("")+'</ul>';
+  ah+='<h3>基本の生活習慣（ガイドライン推奨）</h3>'+baseTips(hurt);
+  act.innerHTML=ah;
+}
+function baseTips(skip){
+  var L=[
+    ["salty",'<li><b>減塩：1日6g未満</b> — 日本人の平均は約10g。まずは「汁物は1日1杯」「麺の汁を残す」から</li>'],
+    ["veg",'<li><b>野菜・果物をしっかり</b> — カリウムが塩分の排出を助けます（腎臓病のある方は医師に相談）</li>'],
+    ["exercise",'<li><b>有酸素運動</b> — 速歩きなどを1日30分程度、できれば毎日。10分×3回に分けてもOK</li>'],
+    ["weight",'<li><b>体重管理</b> — 太り気味なら体重の3%減でも血圧が下がりやすくなります</li>'],
+    ["alcohol",'<li><b>節酒</b> — 男性はビール中瓶1本・日本酒1合程度、女性はその半分程度まで</li>'],
+    ["smoke",'<li><b>禁煙</b> — 喫煙は血圧を一時的に上げ、動脈硬化を進めます</li>'],
+    ["sleep",'<li><b>睡眠と寒さ対策</b> — 睡眠不足や急な寒さは血圧を上げます</li>']
+  ];
+  return '<ul class="tips">'+L.filter(function(x){return skip.indexOf(x[0])<0;}).map(function(x){return x[1];}).join("")+'</ul>';
+}
+
+// ---------- log ----------
+function renderLog(){
+  var el=$("logBody"); $("logCount").textContent=readings.length?"（"+readings.length+"件）":"";
+  if(!readings.length){ el.innerHTML='<div class="empty">記録がここに並びます。</div>'; return; }
+  var h='', lastDay=null, list=readings.slice().reverse().slice(0,300);
+  list.forEach(function(r){
+    var dk=dayKey(r.t);
+    if(dk!==lastDay){ if(lastDay) h+='</ul>'; h+='<div class="daysep">'+fmtDay(r.t)+'</div><ul class="log">'; lastDay=dk; }
+    var tags=r.tags.map(function(k){return TAGMAP[k];}).join(" ");
+    h+='<li><div class="when">'+SLOTLABEL[r.slot]+'<br>'+fmtTime(r.t)+'</div>'+
+       '<div class="grow"><div class="vals">'+r.sys+'/'+r.dia+(r.pulse!=null?' <small>脈'+r.pulse+'</small>':'')+(r.n>1?' <small>(2回平均)</small>':'')+'</div>'+
+       '<div class="meta">'+badge(r.sys,r.dia)+(tags?' '+esc(tags):'')+(r.memo?'<br>'+esc(r.memo):'')+'</div></div>'+
+       '<button class="iconbtn" data-edit="'+esc(r.id)+'" aria-label="編集">✎</button>'+
+       '<button class="iconbtn" data-del="'+esc(r.id)+'" aria-label="削除">🗑</button></li>';
+  });
+  h+='</ul>';
+  if(readings.length>300) h+='<p class="note">最新300件を表示しています。CSVには全件含まれます。</p>';
+  el.innerHTML=h;
+}
+var pendingDel=null;
+$("logBody").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b)return;
+  if(b.dataset.edit){ startEdit(b.dataset.edit); return; }
+  if(b.dataset.del){
+    var r=readings.find(function(x){return x.id===b.dataset.del;}); if(!r)return;
+    pendingDel=r.id; $("confirmText").textContent=fmtDay(r.t)+" "+fmtTime(r.t)+"　"+r.sys+"/"+r.dia+"（元に戻せません）";
+    $("confirmModal").classList.add("on");
+  }
+});
+$("cNo").addEventListener("click",function(){ pendingDel=null; $("confirmModal").classList.remove("on"); });
+$("cYes").addEventListener("click",function(){
+  var id=pendingDel; pendingDel=null; $("confirmModal").classList.remove("on"); if(!id)return;
+  removeReading(id).then(function(){toast("削除しました");},function(e){toast(errMsg(e));});
+});
+function anchorDownload(name, text, type){
+  var blob=new Blob([text],{type:type}); var url=URL.createObjectURL(blob);
+  var a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); },500);
+}
+// Claude上のページでは downloads 機能、単体ファイルではブラウザの通常ダウンロード
+function download(name, text, type){
+  if(window.claude && typeof window.claude.use==="function"){
+    return window.claude.use("downloads").then(function(dl){
+      if(!dl){ throw {code:"unavailable"}; }
+      return dl.save({filename:name, data:text});
+    });
+  }
+  anchorDownload(name, text, type);
+  return Promise.resolve({status:"saved"});
+}
+function dlError(e){
+  var c=e&&e.code;
+  if(c==="declined") return "保存をキャンセルしました";
+  if(c==="rate_limited") return "少し待ってからもう一度お試しください";
+  return "このページでは保存できませんでした";
+}
+function stamp(){ var d=new Date(); return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate()); }
+$("dlBackup").addEventListener("click",function(){
+  download("血圧ノート_バックアップ_"+stamp()+".json", JSON.stringify({app:"bpnote",v:1,readings:readings,target:target}), "application/json").then(function(){
+    try{ localStorage.setItem("bpnote.lastBackup", String(Date.now())); }catch(e){}
+    renderBackupNote(); toast("バックアップを保存しました");
+  }, function(e){ toast(dlError(e)); });
+});
+$("dlCsv").addEventListener("click",function(){
+  if(!readings.length){ toast("まだ記録がありません"); return; }
+  download("血圧記録_"+stamp()+".csv", "\ufeff"+buildCsv(), "text/csv").then(function(){ toast("CSVを保存しました"); }, function(e){ toast(dlError(e)); });
+});
+$("restore").addEventListener("change",function(e){
+  var f=e.target.files&&e.target.files[0]; if(!f)return;
+  var fr=new FileReader();
+  fr.onload=function(){
+    try{
+      var o=JSON.parse(fr.result); if(!o||o.app!=="bpnote"||!Array.isArray(o.readings)) throw 0;
+      var incoming=o.readings.map(function(r){return normalize(r.id,r);}).filter(Boolean);
+      var byId={}; readings.forEach(function(r){byId[r.id]=r;}); var added=0;
+      incoming.forEach(function(r){ if(!byId[r.id]) added++; byId[r.id]=r; });
+      readings=Object.keys(byId).map(function(k){return byId[k];}).sort(function(a,b){return a.t-b.t;});
+      if(o.target&&typeof o.target.sys==="number") target=o.target;
+      saveLocal(); renderAll(); toast("復元しました（新しく"+added+"件）");
+    }catch(err){ toast("バックアップファイルを読み込めませんでした"); }
+    e.target.value="";
+  };
+  fr.readAsText(f);
+});
+function renderBackupNote(){
+  var t=null; try{ t=Number(localStorage.getItem("bpnote.lastBackup"))||null; }catch(e){}
+  $("lastBackup").textContent = t ? "最後のバックアップ："+fmtDay(t)+" "+fmtTime(t) : "まだバックアップしていません。";
+}
+renderBackupNote();
+function buildCsv(){
+  var rows=[["日付","時刻","タイミング","最高","最低","脈拍","状況","メモ"]];
+
+  readings.forEach(function(r){
+    rows.push([dayKey(r.t),fmtTime(r.t),SLOTLABEL[r.slot],r.sys,r.dia,r.pulse==null?"":r.pulse,
+      r.tags.map(function(k){return TAGMAP[k].replace(/^\S+\s/,"");}).join("・"), r.memo]);
+  });
+  return rows.map(function(row){return row.map(function(v){v=String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(",");}).join("\n");
+}
+$("copyCsv").addEventListener("click",function(){
+  var csv=buildCsv();
+  try{
+    navigator.clipboard.writeText(csv).then(function(){toast("CSVをコピーしました（"+readings.length+"件）");},function(){toast("コピーできませんでした");});
+  }catch(e){ toast("コピーできませんでした"); }
+});
+
+// ---------- target ----------
+$("saveTarget").addEventListener("click",function(){
+  var s=num("tSys"), d=num("tDia");
+  if(s==null||d==null||isNaN(s)||isNaN(d)||s<90||s>180||d<50||d>110){ toast("目標値を確認してください"); return; }
+  target={sys:Math.round(s),dia:Math.round(d)};
+  putTarget().then(function(){ toast("目標を保存しました"); renderAll(); },function(e){ toast(errMsg(e)); });
+});
+
+// ---------- tabs ----------
+function switchTab(v){
+  [].forEach.call(document.querySelectorAll("nav.tabs button"),function(b){ b.setAttribute("aria-selected", b.dataset.v===v?"true":"false"); });
+  [].forEach.call(document.querySelectorAll("section.view"),function(s){ s.classList.toggle("on", s.id===v); });
+  if(v==="v-chart") renderChart();
+  window.scrollTo(0,0);
+}
+document.querySelector("nav.tabs").addEventListener("click",function(e){ var b=e.target.closest("button"); if(b) switchTab(b.dataset.v); });
+
+function renderAll(){
+  renderToday(); renderLog(); renderAnalysis();
+  if(document.activeElement!==$("tSys") && document.activeElement!==$("tDia")){ $("tSys").value=target.sys; $("tDia").value=target.dia; }
+  if($("v-chart").classList.contains("on")) renderChart();
+}
+
+// ---------- init ----------
+renderTagChips(); resetForm();
+bindSeg("rangeSeg","range",renderChart);
+bindSeg("slotFilter","filter",renderChart);
+bindSeg("anaSeg","ana",renderAnalysis);
+renderAll();
+connect();
+var rz; window.addEventListener("resize",function(){ clearTimeout(rz); rz=setTimeout(function(){ if($("v-chart").classList.contains("on")) renderChart(); },150); });
+})();
+</script>
+</body>
+</html>
