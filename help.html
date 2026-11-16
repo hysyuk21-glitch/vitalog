@@ -45,7 +45,7 @@ figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
 <div class="wrap">
 
 <nav class="toc" aria-label="目次">
-  <a href="#intro">はじめに</a><a href="#home">ホーム画面に追加</a><a href="#measure">測り方</a><a href="#rec">記録</a><a href="#chart">グラフ</a><a href="#ana">分析・対策</a><a href="#log">履歴・バックアップ</a><a href="#faq">よくある質問</a><a href="#caution">注意事項</a>
+  <a href="#intro">はじめに</a><a href="#home">ホーム画面に追加</a><a href="#measure">測り方</a><a href="#rec">記録</a><a href="#chart">グラフ</a><a href="#ana">分析・対策</a><a href="#log">履歴・バックアップ</a><a href="#google">スプレッドシート連携</a><a href="#faq">よくある質問</a><a href="#caution">注意事項</a>
 </nav>
 
 <section id="intro">
@@ -60,7 +60,7 @@ figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
     <tr><td>分析・対策</td><td>平均・判定・傾向と、あなた向けの対策を見る</td></tr>
     <tr><td>履歴</td><td>記録の一覧、編集・削除、CSVやバックアップの保存</td></tr>
   </table>
-  <div class="note"><b>データの保存場所：</b>記録はこの端末のブラウザの中だけに保存され、インターネット上には送信されません。そのぶん、ブラウザのデータを消すと記録も消えるので、ときどきバックアップを取ってください（<a href="#log">履歴・バックアップ</a>）。</div>
+  <div class="note"><b>データの保存場所：</b>記録はこの端末のブラウザの中に保存され、インターネット上には送信されません（<a href="#google">Googleスプレッドシート連携</a>を使った場合だけ、あなたのGoogleドライブにも保存されます）。そのぶん、ブラウザのデータを消すと記録も消えるので、ときどきバックアップを取ってください（<a href="#log">履歴・バックアップ</a>）。</div>
 </section>
 
 <section id="home">
@@ -173,13 +173,41 @@ figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
   <ol><li>古いスマホで「バックアップを保存」</li><li>そのファイルを新しいスマホに送る（メール、LINEの自分宛て、クラウドなど）</li><li>新しいスマホでアプリを開き、「バックアップから復元」でそのファイルを選ぶ</li></ol>
 </section>
 
+<section id="google">
+  <h2>Googleスプレッドシート連携</h2>
+  <p>Googleアカウントがあれば、記録を自分のGoogleドライブのスプレッドシートに自動で保存できます。スマホを替えても、ログインし直すだけで記録を引き継げます。使わなくてもアプリは今まで通り使えます。</p>
+  <h3>はじめ方</h3>
+  <ol>
+    <li>「履歴」タブを開き、「Googleスプレッドシート連携」の<b>「Googleでログインして連携」</b>を押す</li>
+    <li>Googleアカウントを選び、ファイルへのアクセスを<b>許可</b>する</li>
+    <li>ドライブに「血圧ノート（vitalog）」というスプレッドシートが自動で作られ、今までの記録が書き込まれる</li>
+  </ol>
+  <figure><img src="img/08_google_off.jpg" alt="連携前" loading="lazy"><figcaption>連携前：「Googleでログインして連携」を押す</figcaption></figure>
+  <figure><img src="img/09_google_on.jpg" alt="連携中" loading="lazy"><figcaption>連携中：同期・スプレッドシートを開く・解除ができる</figcaption></figure>
+  <h3>同期のしくみ</h3>
+  <ul>
+    <li>記録・編集・削除をすると、自動でスプレッドシートにも反映されます（右上に「☁ 同期済み」と表示）</li>
+    <li>Googleのログインは約1時間で切れます。切れると右上が<b>「☁ タップで同期」</b>になるので、押せば続きから同期します。その間の記録も端末に残っているので消えません</li>
+    <li>別のスマホやパソコンで同じGoogleアカウントでログインすると、スプレッドシートの記録が読み込まれ、両方の記録がまとまります</li>
+    <li>スプレッドシートの数値やメモを直接直すと、次の同期でアプリにも反映されます。行を追加・削除するときは、アプリから行ってください</li>
+  </ul>
+  <h3>安心して使うために</h3>
+  <ul>
+    <li>アプリが読み書きできるのは、このアプリが作ったスプレッドシートだけです。ドライブの他のファイルやメールは見えません</li>
+    <li>記録はあなたの端末とGoogleの間で直接やり取りされ、ほかのサーバーには送られません</li>
+    <li>「連携を解除」を押すと連携をやめられます。端末の記録とスプレッドシートはそのまま残ります</li>
+  </ul>
+</section>
+
 <section id="faq">
   <h2>よくある質問</h2>
   <table>
     <tr><th>こんなとき</th><th>どうする？</th></tr>
     <tr><td>記録が消えた</td><td>ブラウザの履歴やデータを消すと記録も消えます。バックアップがあれば「バックアップから復元」で戻せます</td></tr>
     <tr><td>ホーム画面とブラウザで記録が違う</td><td>開き方ごとに保存場所が分かれることがあります。いつもホーム画面のアイコンから開いてください</td></tr>
-    <tr><td>スマホとパソコンで同じ記録を見たい</td><td>自動では同期されません。バックアップを保存して、もう一方で復元します</td></tr>
+    <tr><td>スマホとパソコンで同じ記録を見たい</td><td>Googleスプレッドシート連携を使うと、同じGoogleアカウントでログインした端末どうしで記録がまとまります。連携しない場合は、バックアップを保存してもう一方で復元します</td></tr>
+    <tr><td>「Googleへのログインがキャンセルされました」と出る</td><td>ログイン画面を閉じると表示されます。もう一度「今すぐ同期」を押してください。画面が開かないときは、ポップアップのブロックを解除してください</td></tr>
+    <tr><td>スプレッドシートを消してしまった</td><td>「今すぐ同期」を押すと、新しいスプレッドシートが作られて端末の記録が書き込まれます</td></tr>
     <tr><td>「記録を保存できません」と出る</td><td>プライベートモード（シークレットモード）をオフにして、通常のSafariやChromeで開いてください</td></tr>
     <tr><td>分析が表示されない</td><td>選んだ期間に3回以上の記録が必要です。期間を30日にするか、記録を続けてください</td></tr>
     <tr><td>入力を間違えた</td><td>履歴タブの「✎」で直すか、「🗑」で削除します</td></tr>
@@ -196,6 +224,7 @@ figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
     <li>治療中の方は、薬の量や飲む時間を自分の判断で変えず、主治医に相談してください</li>
     <li>野菜・果物を増やす対策は、腎臓の病気がある方は先に医師に相談してください</li>
   </ul>
+  <p style="font-size:13px;color:var(--ink2)"><a href="privacy.html">プライバシーポリシー</a></p>
   <p style="font-size:13px;color:var(--ink2)">分類と目標値は、日本高血圧学会『高血圧管理・治療ガイドライン2025』の家庭血圧の基準をもとにしています。</p>
   <a class="btn" href="./">アプリに戻る</a>
 </section>

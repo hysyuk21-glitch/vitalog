@@ -12,6 +12,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
+<script src="config.js"></script>
 <style>
 :root{
   color-scheme: light;
@@ -44,6 +45,12 @@ header{display:flex;align-items:center;justify-content:space-between;margin:4px 
 h1{font-size:22px;margin:0;letter-spacing:.02em}
 .sub{color:var(--ink2);font-size:12px}
 .hdr-r{display:flex;align-items:center;gap:10px}
+.syncchip{border:0;background:none;font:inherit;font-size:12px;color:var(--ink2);padding:4px 2px;cursor:default}
+.syncchip.act{cursor:pointer;color:var(--accent);font-weight:700;border:1px solid var(--accent);border-radius:999px;padding:4px 10px}
+.gstat{display:flex;align-items:center;gap:8px;font-size:14px;margin:4px 0 10px}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:1px solid var(--axis);background:var(--surface);color:var(--ink);border-radius:12px;padding:12px;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+.gbtn svg{flex:none}
+.err{color:var(--crit);font-size:13px;margin:8px 0 0}
 .helpbtn{font-size:13px;font-weight:700;color:var(--accent);text-decoration:none;border:1px solid var(--accent);border-radius:999px;padding:4px 11px;white-space:nowrap}
 .helpbtn:active{background:var(--wash)}
 .card{background:var(--card);border:1px solid var(--ring);border-radius:14px;padding:14px;margin-bottom:12px}
@@ -140,7 +147,7 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
 <div class="wrap">
   <header>
     <h1>血圧ノート</h1>
-    <span class="hdr-r"><span class="sub" id="syncState">読み込み中…</span><a class="helpbtn" href="help.html">？ 使い方</a></span>
+    <span class="hdr-r"><button type="button" class="sub syncchip" id="syncState">読み込み中…</button><a class="helpbtn" href="help.html">？ 使い方</a></span>
   </header>
   <div class="banner" id="banner"></div>
 
@@ -274,6 +281,10 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
       </div>
       <div id="logBody"></div>
     </div>
+    <div class="card" id="gCard" style="display:none">
+      <h2>Googleスプレッドシート連携</h2>
+      <div id="gBody"></div>
+    </div>
     <div class="card">
       <h2>バックアップ</h2>
       <p class="small ink2" style="margin-top:0">記録はこのブラウザの中に保存されています。ブラウザの履歴やデータを消すと記録も消えるので、ときどきバックアップを保存してください。機種変更のときも、このファイルで記録を引き継げます。</p>
@@ -284,6 +295,7 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
       </div>
       <p class="note" id="lastBackup"></p>
     </div>
+    <p class="note" style="text-align:center"><a href="help.html" style="color:var(--accent)">使い方</a>　·　<a href="privacy.html" style="color:var(--accent)">プライバシーポリシー</a></p>
   </section>
 </div>
 
@@ -373,7 +385,8 @@ function normalize(id, o){
   if(!o || typeof o.t!=="number" || typeof o.sys!=="number" || typeof o.dia!=="number") return null;
   return {id:id, t:o.t, sys:o.sys, dia:o.dia, pulse:(typeof o.pulse==="number"?o.pulse:null),
     slot:(o.slot in SLOTLABEL?o.slot:guessSlot(o.t)), tags:Array.isArray(o.tags)?o.tags.filter(function(k){return TAGMAP[k];}):[],
-    memo:typeof o.memo==="string"?o.memo:"", n:(typeof o.n==="number"?o.n:1)};
+    memo:typeof o.memo==="string"?o.memo:"", n:(typeof o.n==="number"?o.n:1),
+    u:(typeof o.u==="number"?o.u:o.t)};
 }
 function loadLocal(){
   try{ var raw=localStorage.getItem(LSKEY); if(!raw)return; var o=JSON.parse(raw);
@@ -391,15 +404,16 @@ function putReading(r){
   if(mode==="db"){
     return db.collection("bp").doc(r.id).set(body);
   }
+  r.u=Date.now();
   var i=readings.findIndex(function(x){return x.id===r.id;});
   if(i>=0) readings[i]=r; else readings.push(r);
   readings.sort(function(a,b){return a.t-b.t;});
-  saveLocal(); renderAll();
+  saveLocal(); renderAll(); scheduleSync();
   return Promise.resolve();
 }
 function removeReading(id){
   if(mode==="db") return db.collection("bp").doc(id).delete();
-  readings=readings.filter(function(x){return x.id!==id;}); saveLocal(); renderAll();
+  readings=readings.filter(function(x){return x.id!==id;}); addTomb(id); saveLocal(); renderAll(); scheduleSync();
   return Promise.resolve();
 }
 function putTarget(){
@@ -439,11 +453,225 @@ function connect(){
   }, function(){ clearTimeout(timer); fallback(); });
 }
 function fallback(){
-  mode="local"; loadLocal(); setSync("この端末に保存");
+  mode="local"; loadLocal(); setSync("この端末に保存"); gInit();
   var ok=true; try{ localStorage.setItem("bpnote.test","1"); localStorage.removeItem("bpnote.test"); }catch(e){ ok=false; }
   showBanner(ok ? "" : "このブラウザでは記録を保存できません。別のブラウザ（Chrome・Safariなど）で開いてください。");
   renderAll();
 }
+
+
+// ---------- Google スプレッドシート連携 ----------
+var CFG = window.VITALOG_CONFIG || {};
+var GCID = (CFG.googleClientId||"").trim();
+var GSCOPE = "https://www.googleapis.com/auth/drive.file";
+var SHEET_TITLE = "血圧ノート（vitalog）";
+var HEADER = ["日付","時刻","タイミング","最高","最低","脈拍","状況","メモ","測定回数","ID","記録日時(ms)","更新日時(ms)"];
+var G = {token:null, exp:0, sheetId:null, lastSync:0, connected:false, dirty:false, syncing:false, again:false, tc:null, pending:null, err:"", confirmOff:false};
+var SLOTFROM = {"朝":"morning","夜":"evening","その他":"other"};
+var TAGFROM = {}; TAGS.forEach(function(t){ TAGFROM[t.label.replace(/^\S+\s/,"")] = t.k; });
+
+function tombs(){ try{ var a=JSON.parse(localStorage.getItem("bpnote.deleted")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function setTombs(a){ try{ localStorage.setItem("bpnote.deleted", JSON.stringify(a)); }catch(e){} }
+function addTomb(id){ var a=tombs(); if(a.indexOf(id)<0){ a.push(id); setTombs(a); } }
+function gLoad(){
+  try{
+    var o=JSON.parse(localStorage.getItem("bpnote.google")||"{}");
+    G.sheetId=o.sheetId||null; G.lastSync=o.lastSync||0; G.connected=!!o.connected; G.dirty=!!o.dirty;
+    var t=JSON.parse(localStorage.getItem("bpnote.gtoken")||"null");
+    if(t && t.exp>Date.now()+60000){ G.token=t.token; G.exp=t.exp; }
+  }catch(e){}
+}
+function gSave(){
+  try{
+    localStorage.setItem("bpnote.google", JSON.stringify({sheetId:G.sheetId,lastSync:G.lastSync,connected:G.connected,dirty:G.dirty}));
+    if(G.token) localStorage.setItem("bpnote.gtoken", JSON.stringify({token:G.token,exp:G.exp})); else localStorage.removeItem("bpnote.gtoken");
+  }catch(e){}
+}
+function tokenValid(){ return !!G.token && G.exp>Date.now()+60000; }
+
+function gInit(){
+  if(!GCID){ return; }
+  $("gCard").style.display="";
+  gLoad(); renderGoogle();
+  var s=document.createElement("script"); s.src="https://accounts.google.com/gsi/client"; s.async=true; s.defer=true;
+  s.onload=function(){
+    try{
+      G.tc=google.accounts.oauth2.initTokenClient({client_id:GCID, scope:GSCOPE,
+        callback:function(resp){
+          var p=G.pending; G.pending=null;
+          if(!resp || resp.error){ if(p) p.rej({code:(resp&&resp.error)||"denied"}); return; }
+          if(google.accounts.oauth2.hasGrantedAllScopes && !google.accounts.oauth2.hasGrantedAllScopes(resp, GSCOPE)){ if(p) p.rej({code:"scope"}); return; }
+          G.token=resp.access_token; G.exp=Date.now()+(Number(resp.expires_in)||3600)*1000; gSave();
+          if(p) p.res(G.token);
+        },
+        error_callback:function(err){ var p=G.pending; G.pending=null; if(p) p.rej({code:(err&&err.type)||"popup"}); }
+      });
+    }catch(e){ G.err="Googleの読み込みに失敗しました。"; }
+    renderGoogle();
+  };
+  s.onerror=function(){ G.err="Googleに接続できません。通信状態を確認してください。"; renderGoogle(); };
+  document.head.appendChild(s);
+  if(G.connected && tokenValid()) sync(false);
+}
+
+function getToken(interactive){
+  return new Promise(function(res,rej){
+    if(tokenValid()) return res(G.token);
+    if(!interactive) return rej({code:"need_login"});
+    if(!G.tc) return rej({code:"not_ready"});
+    G.pending={res:res,rej:rej};
+    try{ G.tc.requestAccessToken({prompt: G.connected ? "" : "consent"}); }
+    catch(e){ G.pending=null; rej({code:"popup"}); }
+  });
+}
+function gfetch(method, url, body){
+  var h={"Authorization":"Bearer "+G.token}; if(body) h["Content-Type"]="application/json";
+  return fetch(url,{method:method, headers:h, body:body?JSON.stringify(body):undefined}).then(function(r){
+    if(r.status===401){ G.token=null; G.exp=0; gSave(); throw {code:"need_login"}; }
+    if(!r.ok) return r.text().then(function(t){ throw {code:"http", status:r.status, msg:t}; });
+    return r.status===204 ? null : r.json();
+  });
+}
+var SHEETS="https://sheets.googleapis.com/v4/spreadsheets";
+function ensureSheet(){
+  if(G.sheetId){
+    return gfetch("GET", SHEETS+"/"+G.sheetId+"?fields=spreadsheetId").then(function(){ return G.sheetId; }, function(e){
+      if(e.code==="http" && (e.status===404 || e.status===403)){ G.sheetId=null; gSave(); return ensureSheet(); }
+      throw e;
+    });
+  }
+  var q=encodeURIComponent("name='"+SHEET_TITLE+"' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
+  return gfetch("GET","https://www.googleapis.com/drive/v3/files?q="+q+"&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id)").then(function(r){
+    if(r && r.files && r.files.length){ G.sheetId=r.files[0].id; gSave(); return G.sheetId; }
+    var tz="Asia/Tokyo"; try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||tz; }catch(e){}
+    return gfetch("POST", SHEETS, {properties:{title:SHEET_TITLE, locale:"ja_JP", timeZone:tz},
+      sheets:[{properties:{title:"記録", gridProperties:{frozenRowCount:1}}},{properties:{title:"削除済み", hidden:true}}]
+    }).then(function(sh){ G.sheetId=sh.spreadsheetId; gSave(); return G.sheetId; });
+  });
+}
+function cellSafe(v){ v=String(v==null?"":v); return /^[=+\-@]/.test(v) ? "'"+v : v; }
+function toRow(r){
+  return [dayKey(r.t), fmtTime(r.t), SLOTLABEL[r.slot], r.sys, r.dia, r.pulse==null?"":r.pulse,
+    r.tags.map(function(k){return TAGMAP[k].replace(/^\S+\s/,"");}).join("・"), cellSafe(r.memo), r.n, r.id, r.t, r.u];
+}
+function fromRow(row){
+  if(!row || row.length<12) return null;
+  var id=String(row[9]||""), t=Number(row[10]), u=Number(row[11]);
+  if(!id || !isFinite(t)) return null;
+  var tags=String(row[6]||"").split("・").map(function(x){return TAGFROM[x.trim()];}).filter(Boolean);
+  var pulse=row[5]===""||row[5]==null ? null : Number(row[5]);
+  return normalize(id, {t:t, u:isFinite(u)?u:t, sys:Number(row[3]), dia:Number(row[4]), pulse:isFinite(pulse)?pulse:null,
+    slot:SLOTFROM[String(row[2])]||guessSlot(t), tags:tags, memo:String(row[7]==null?"":row[7]), n:Number(row[8])||1});
+}
+function same(a,b){
+  return a.sys===b.sys && a.dia===b.dia && a.pulse===b.pulse && a.memo===b.memo && a.slot===b.slot && a.n===b.n && a.t===b.t &&
+    a.tags.slice().sort().join()===b.tags.slice().sort().join();
+}
+function mergeWith(sheetRows, sheetTombs){
+  var dead={}; tombs().concat(sheetTombs).forEach(function(id){ if(id) dead[id]=1; });
+  var L={}, S={}, ids={};
+  readings.forEach(function(r){ L[r.id]=r; ids[r.id]=1; });
+  sheetRows.forEach(function(r){ S[r.id]=r; ids[r.id]=1; });
+  var out=[], now=Date.now();
+  Object.keys(ids).forEach(function(id){
+    if(dead[id]) return;
+    var l=L[id], s=S[id];
+    if(!l) out.push(s);
+    else if(!s) out.push(l);
+    else if(s.u>l.u) out.push(s);
+    else if(s.u===l.u && !same(s,l)){ s.u=now; out.push(s); }   // シート上で直接直された
+    else out.push(l);
+  });
+  readings=out.sort(function(a,b){return a.t-b.t;});
+  setTombs(Object.keys(dead));
+  saveLocal();
+}
+function sync(interactive){
+  if(!GCID) return Promise.resolve();
+  if(G.syncing){ G.again=true; return Promise.resolve(); }
+  G.syncing=true; G.err=""; renderGoogle();
+  var rowsCount=0;
+  return getToken(interactive).then(ensureSheet).then(function(id){
+    var rg="ranges="+encodeURIComponent("'記録'!A2:L")+"&ranges="+encodeURIComponent("'削除済み'!A2:A");
+    return gfetch("GET", SHEETS+"/"+id+"/values:batchGet?"+rg+"&valueRenderOption=UNFORMATTED_VALUE");
+  }).then(function(res){
+    var vr=(res && res.valueRanges)||[];
+    var rows=((vr[0]&&vr[0].values)||[]).map(fromRow).filter(Boolean);
+    var tb=((vr[1]&&vr[1].values)||[]).map(function(r){return String(r[0]||"");});
+    mergeWith(rows, tb);
+    var data=[HEADER].concat(readings.map(toRow)); rowsCount=data.length;
+    var td=[["削除したID"]].concat(tombs().map(function(x){return [x];}));
+    return gfetch("POST", SHEETS+"/"+G.sheetId+"/values:batchUpdate", {valueInputOption:"USER_ENTERED", data:[
+      {range:"'記録'!A1", values:data}, {range:"'削除済み'!A1", values:td}]}).then(function(){
+      return gfetch("POST", SHEETS+"/"+G.sheetId+"/values:batchClear", {ranges:["'記録'!A"+(rowsCount+1)+":L", "'削除済み'!A"+(td.length+1)+":A"]});
+    });
+  }).then(function(){
+    G.connected=true; G.dirty=false; G.lastSync=Date.now(); gSave(); renderAll();
+  }).catch(function(e){
+    var c=e&&e.code;
+    if(c==="need_login"){ G.dirty = G.dirty || false; }
+    else if(c==="popup_closed" || c==="popup_failed_to_open" || c==="popup" || c==="access_denied" || c==="denied"){ G.err = c==="popup_failed_to_open" ? "ログイン画面を開けませんでした。ポップアップのブロックを解除してください。" : "Googleへのログインがキャンセルされました。"; }
+    else if(c==="scope"){ G.err="スプレッドシートへのアクセスが許可されませんでした。もう一度ログインし、チェックを入れて許可してください。"; }
+    else if(c==="not_ready"){ G.err="Googleを読み込み中です。数秒後にもう一度お試しください。"; }
+    else if(c==="http" && e.status===403){ G.err="Googleに拒否されました（設定が未完了の可能性があります）。"; }
+    else { G.err="同期できませんでした。通信状態を確認してもう一度お試しください。"; }
+    gSave();
+  }).then(function(){
+    G.syncing=false; renderGoogle();
+    if(G.again){ G.again=false; if(tokenValid()) sync(false); }
+  });
+}
+function scheduleSync(){
+  if(!GCID || !G.connected) return;
+  G.dirty=true; gSave(); renderGoogle();
+  if(!tokenValid()) return;
+  clearTimeout(G.timer); G.timer=setTimeout(function(){ sync(false); }, 1200);
+}
+function disconnect(){
+  try{ if(G.token && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(G.token, function(){}); }catch(e){}
+  G.token=null; G.exp=0; G.connected=false; G.sheetId=null; G.dirty=false; G.lastSync=0; G.err=""; G.confirmOff=false;
+  gSave(); renderGoogle(); toast("連携を解除しました");
+}
+var GICON='<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>';
+function renderGoogle(){
+  if(!GCID) return;
+  var chip=$("syncState");
+  chip.classList.remove("act");
+  if(G.connected){
+    if(G.syncing) chip.textContent="☁ 同期中…";
+    else if(!tokenValid()){ chip.textContent="☁ タップで同期"; chip.classList.add("act"); }
+    else if(G.dirty) chip.textContent="☁ 同期待ち";
+    else chip.textContent="☁ 同期済み";
+  } else chip.textContent="この端末に保存";
+  var b=$("gBody"), h="";
+  if(!G.connected){
+    h+='<p class="small ink2" style="margin-top:0">Googleアカウントでログインすると、記録があなたのGoogleドライブのスプレッドシートに自動で保存されます。スマホを替えても、ログインすれば記録を引き継げます。</p>';
+    h+='<button class="gbtn" id="gLogin" type="button">'+GICON+'Googleでログインして連携</button>';
+    h+='<p class="note">アプリが読み書きできるのは、このアプリが作る「'+esc(SHEET_TITLE)+'」のファイルだけです。ドライブの他のファイルは見えません。</p>';
+  } else {
+    var st = G.syncing ? "同期中…" : (G.dirty ? "まだ送っていない記録があります" : (G.lastSync ? "最終同期 "+fmtDay(G.lastSync)+" "+fmtTime(G.lastSync) : "連携済み"));
+    h+='<div class="gstat"><i class="dot" style="background:'+(G.dirty||!tokenValid()?'var(--warn)':'var(--good)')+'"></i><b>連携中</b><span class="ink2">'+esc(st)+'</span></div>';
+    h+='<div class="row" style="flex-wrap:wrap">';
+    h+='<button class="btn ghost" id="gSync" type="button"'+(G.syncing?' disabled':'')+'>今すぐ同期</button>';
+    if(G.sheetId) h+='<a class="btn ghost" style="text-decoration:none" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(G.sheetId)+'/edit" target="_blank" rel="noopener">スプレッドシートを開く</a>';
+    h+= G.confirmOff ? '<button class="btn danger" id="gOffYes" type="button">本当に解除する</button>' : '<button class="btn ghost" id="gOff" type="button">連携を解除</button>';
+    h+='</div>';
+    if(!tokenValid() && !G.syncing) h+='<p class="note">ログインの有効期限（約1時間）が切れています。「今すぐ同期」か右上の「タップで同期」を押すと続きから同期します。</p>';
+    if(G.confirmOff) h+='<p class="note">解除しても、この端末の記録とスプレッドシートはそのまま残ります。</p>';
+  }
+  if(G.err) h+='<p class="err">'+esc(G.err)+'</p>';
+  b.innerHTML=h;
+}
+document.addEventListener("click", function(e){
+  var t=e.target.closest("button"); if(!t) return;
+  if(t.id==="gLogin" || t.id==="gSync"){ sync(true).then(function(){ if(!G.err && G.connected) toast("スプレッドシートと同期しました"); }); }
+  else if(t.id==="syncState" && t.classList.contains("act")){ sync(true); }
+  else if(t.id==="gOff"){ G.confirmOff=true; renderGoogle(); }
+  else if(t.id==="gOffYes"){ disconnect(); }
+});
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState==="visible" && GCID && G.connected && tokenValid()) sync(false);
+});
 
 // ---------- 記録 form ----------
 function setSlot(v){ ui.slot=v; [].forEach.call($("slotSeg").children,function(b){b.setAttribute("aria-pressed", b.dataset.v===v?"true":"false");}); }
@@ -846,7 +1074,7 @@ $("restore").addEventListener("change",function(e){
       incoming.forEach(function(r){ if(!byId[r.id]) added++; byId[r.id]=r; });
       readings=Object.keys(byId).map(function(k){return byId[k];}).sort(function(a,b){return a.t-b.t;});
       if(o.target&&typeof o.target.sys==="number") target=o.target;
-      saveLocal(); renderAll(); toast("復元しました（新しく"+added+"件）");
+      saveLocal(); renderAll(); scheduleSync(); toast("復元しました（新しく"+added+"件）");
     }catch(err){ toast("バックアップファイルを読み込めませんでした"); }
     e.target.value="";
   };
