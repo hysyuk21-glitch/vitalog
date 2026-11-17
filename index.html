@@ -13,6 +13,22 @@
 <link rel="icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
 <script src="config.js"></script>
+<script>
+// 画面デザイン（テーマ・アクセント・文字サイズ）を描画前に適用
+(function(){
+  var d={theme:"dark",accent:"orange",size:"normal"}, t=d;
+  try{ var o=JSON.parse(localStorage.getItem("bpnote.theme")||"null"); if(o) t={theme:o.theme||d.theme,accent:o.accent||d.accent,size:o.size||d.size}; }catch(e){}
+  var mq=window.matchMedia?matchMedia("(prefers-color-scheme: dark)"):null;
+  function apply(x){
+    var el=document.documentElement, dark=x.theme==="dark"||(x.theme==="auto"&&mq&&mq.matches);
+    el.setAttribute("data-mode",dark?"dark":"light"); el.setAttribute("data-accent",x.accent); el.setAttribute("data-size",x.size);
+    var m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content",dark?"#0d0d0d":"#f9f9f7");
+  }
+  window.__theme={get:function(){return t;},set:function(x){t=x;try{localStorage.setItem("bpnote.theme",JSON.stringify(t));}catch(e){}apply(t);}};
+  apply(t);
+  if(mq&&mq.addEventListener) mq.addEventListener("change",function(){ if(t.theme==="auto") apply(t); });
+})();
+</script>
 <style>
 :root{
   color-scheme: light;
@@ -24,8 +40,7 @@
   --goodtext:#006300; --accent:#2a78d6; --accentInk:#fff;
   --wash:rgba(42,120,214,0.08);
 }
-@media (prefers-color-scheme: dark){
-  :root{
+:root[data-mode="dark"]{
     color-scheme: dark;
     --page:#0d0d0d; --surface:#1a1a19; --card:#1a1a19;
     --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86;
@@ -33,8 +48,31 @@
     --s1:#3987e5; --s2:#d95926;
     --goodtext:#0ca30c; --accent:#3987e5; --accentInk:#fff;
     --wash:rgba(57,135,229,0.14);
-  }
 }
+/* アクセントカラー（白基調／黒基調で明るさを変える） */
+:root[data-accent="green"]{--accent:#1a8a5a;--wash:rgba(26,138,90,0.10)}
+:root[data-accent="orange"]{--accent:#d9682b;--wash:rgba(217,104,43,0.10)}
+:root[data-accent="pink"]{--accent:#d14d8a;--wash:rgba(209,77,138,0.10)}
+:root[data-mode="dark"][data-accent="green"]{--accent:#2fae74;--wash:rgba(47,174,116,0.16)}
+:root[data-mode="dark"][data-accent="orange"]{--accent:#e8793a;--wash:rgba(232,121,58,0.18)}
+:root[data-mode="dark"][data-accent="pink"]{--accent:#e0609a;--wash:rgba(224,96,154,0.16)}
+:root[data-size="large"] .wrap{zoom:1.15}
+:root[data-size="large"] nav.tabs button{font-size:12.5px}
+/* 画面デザイン設定 */
+.optrow{margin:4px 0 14px}
+.optrow .lbl{font-size:12px;color:var(--ink2);margin-bottom:6px}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.swatch{width:44px;height:44px;border-radius:50%;border:2px solid var(--ring);cursor:pointer;position:relative;padding:0}
+.swatch[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 3px var(--page) inset}
+.swatch span{position:absolute;left:0;right:0;top:48px;font-size:11px;color:var(--ink2);white-space:nowrap}
+.swatches{padding-bottom:18px}
+/* 記録の修正 */
+.log li.tap{cursor:pointer;border-radius:10px}
+.log li.tap:active{background:var(--wash)}
+.editbtn{border:1px solid var(--axis);background:var(--surface);color:var(--ink);font:inherit;font-size:12px;font-weight:700;border-radius:999px;padding:5px 11px;cursor:pointer;white-space:nowrap}
+.editbanner{display:none;background:var(--wash);border:1px solid var(--accent);border-radius:10px;padding:8px 12px;font-size:13px;margin-bottom:10px}
+.editing .editbanner{display:block}
+.editing{outline:2px solid var(--accent);outline-offset:-1px}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--page);color:var(--ink);
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Segoe UI",sans-serif;
@@ -177,6 +215,7 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
 
     <div class="card">
       <h2 id="formTitle">今日の血圧を記録</h2>
+      <div class="editbanner" id="editBanner"></div>
       <form id="form" autocomplete="off">
         <div class="seg" id="slotSeg" role="group" aria-label="測定タイミング">
           <button type="button" data-v="morning">☀ 朝</button>
@@ -209,7 +248,8 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
         <div style="height:14px"></div>
         <button class="btn" id="saveBtn" type="submit">記録する</button>
         <div class="row" style="margin-top:8px;display:none" id="editRow">
-          <button class="btn ghost" type="button" id="cancelEdit">編集をやめる</button>
+          <button class="btn ghost" type="button" id="cancelEdit">修正をやめる</button>
+          <button class="btn danger" type="button" id="delInEdit" style="margin-left:auto">この記録を削除</button>
         </div>
       </form>
     </div>
@@ -300,6 +340,21 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
         <button class="btn ghost" id="copyCsv" type="button">CSVをコピー</button>
       </div>
       <div id="logBody"></div>
+    </div>
+    <div class="card" id="designCard">
+      <h2>画面デザイン</h2>
+      <div class="optrow"><div class="lbl">テーマ</div>
+        <div class="seg" id="optTheme"><button type="button" data-v="auto">自動</button><button type="button" data-v="light">☀ 白基調</button><button type="button" data-v="dark">🌙 黒基調</button></div></div>
+      <div class="optrow"><div class="lbl">アクセントカラー</div>
+        <div class="swatches" id="optAccent">
+          <button type="button" class="swatch" data-v="blue" style="background:#2a78d6" aria-label="青"><span>青</span></button>
+          <button type="button" class="swatch" data-v="green" style="background:#1a8a5a" aria-label="緑"><span>緑</span></button>
+          <button type="button" class="swatch" data-v="orange" style="background:#e8793a" aria-label="オレンジ"><span>オレンジ</span></button>
+          <button type="button" class="swatch" data-v="pink" style="background:#d14d8a" aria-label="ピンク"><span>ピンク</span></button>
+        </div></div>
+      <div class="optrow" style="margin-bottom:4px"><div class="lbl">文字の大きさ</div>
+        <div class="seg" id="optSize"><button type="button" data-v="normal">標準</button><button type="button" data-v="large">大きめ</button></div></div>
+      <p class="note" style="margin-top:8px">「自動」はスマホのライト／ダークモードに合わせて切り替わります。</p>
     </div>
     <div class="card" id="gCard" style="display:none">
       <h2>Googleスプレッドシート連携</h2>
@@ -693,6 +748,22 @@ document.addEventListener("visibilitychange", function(){
   if(document.visibilityState==="visible" && GCID && G.connected && tokenValid()) sync(false);
 });
 
+// ---------- 画面デザイン ----------
+function renderDesign(){
+  var t=window.__theme?__theme.get():{theme:"dark",accent:"orange",size:"normal"};
+  [["optTheme","theme"],["optAccent","accent"],["optSize","size"]].forEach(function(p){
+    [].forEach.call($(p[0]).querySelectorAll("button"),function(b){ b.setAttribute("aria-pressed", b.dataset.v===t[p[1]]?"true":"false"); });
+  });
+}
+[["optTheme","theme"],["optAccent","accent"],["optSize","size"]].forEach(function(p){
+  $(p[0]).addEventListener("click",function(e){
+    var b=e.target.closest("button"); if(!b||!window.__theme) return;
+    var t=Object.assign({},__theme.get()); t[p[1]]=b.dataset.v; __theme.set(t); renderDesign();
+    if($("v-chart").classList.contains("on")) renderChart();
+  });
+});
+renderDesign();
+
 // ---------- 記録 form ----------
 function setSlot(v){ ui.slot=v; [].forEach.call($("slotSeg").children,function(b){b.setAttribute("aria-pressed", b.dataset.v===v?"true":"false");}); }
 function renderTagChips(){
@@ -712,6 +783,7 @@ function resetForm(){
   $("second").open=false; ui.tags={}; renderTagChips();
   var now=Date.now(); $("when").value=toLocalInput(now); setSlot(guessSlot(now));
   $("formTitle").textContent="今日の血圧を記録"; $("saveBtn").textContent="記録する"; $("editRow").style.display="none";
+  $("form").parentNode.classList.remove("editing");
 }
 function startEdit(id){
   var r=readings.find(function(x){return x.id===id;}); if(!r)return;
@@ -720,10 +792,14 @@ function startEdit(id){
   ["sys2","dia2","pulse2"].forEach(function(i){$(i).value="";}); $("second").open=false;
   $("memo").value=r.memo; $("when").value=toLocalInput(r.t); setSlot(r.slot);
   ui.tags={}; r.tags.forEach(function(k){ui.tags[k]=true;}); renderTagChips();
-  $("formTitle").textContent="記録を編集"; $("saveBtn").textContent="変更を保存"; $("editRow").style.display="flex";
+  $("formTitle").textContent="記録を修正"; $("saveBtn").textContent="変更を保存"; $("editRow").style.display="flex";
+  $("editBanner").textContent="✎ "+fmtDay(r.t)+" "+fmtTime(r.t)+"（"+SLOTLABEL[r.slot]+"）の記録 "+r.sys+"/"+r.dia+" を修正しています。数値・日時・状況・メモを直して「変更を保存」を押してください。";
+  $("form").parentNode.classList.add("editing");
   window.scrollTo({top:$("form").getBoundingClientRect().top+window.scrollY-80,behavior:"smooth"});
 }
 $("cancelEdit").addEventListener("click",resetForm);
+$("delInEdit").addEventListener("click",function(){ if(editingId) askDelete(editingId); });
+document.addEventListener("click",function(e){ var b=e.target.closest("[data-editlast]"); if(b) startEdit(b.dataset.editlast); });
 
 function num(id){ var v=$(id).value.trim(); if(v==="")return null; var n=Number(v); return isFinite(n)?n:NaN; }
 $("form").addEventListener("submit",function(e){
@@ -769,13 +845,14 @@ function renderToday(){
   var wm=w.filter(function(r){return r.slot==="morning";}), we=w.filter(function(r){return r.slot==="evening";});
   function pair(arr){ return arr.length? r0(avg(arr.map(function(r){return r.sys;})))+"/"+r0(avg(arr.map(function(r){return r.dia;}))) : "–"; }
   el.innerHTML =
-    '<div class="small ink2" style="margin-bottom:6px">最新の記録 · '+fmtDay(last.t)+' '+fmtTime(last.t)+'（'+SLOTLABEL[last.slot]+'）</div>'+
+    '<div class="row" style="justify-content:space-between;margin-bottom:6px"><div class="small ink2">最新の記録 · '+fmtDay(last.t)+' '+fmtTime(last.t)+'（'+SLOTLABEL[last.slot]+'）</div>'+
+    '<button type="button" class="editbtn" data-editlast="'+esc(last.id)+'">✎ 修正</button></div>'+
     '<div class="hero"><div class="big">'+last.sys+'<span style="color:var(--muted);font-weight:500">/</span>'+last.dia+'<small>mmHg</small></div>'+
     '<div style="padding-bottom:4px">'+badge(last.sys,last.dia)+(last.pulse!=null?' <span class="small ink2">脈 '+last.pulse+'</span>':'')+'</div></div>'+
     '<div style="height:12px"></div>'+
     '<div class="tiles">'+
-      '<div class="tile"><div class="k">朝の平均（7日）</div><div class="v">'+pair(wm)+'</div><div class="d">'+wm.length+'回</div></div>'+
-      '<div class="tile"><div class="k">夜の平均（7日）</div><div class="v">'+pair(we)+'</div><div class="d">'+we.length+'回</div></div>'+
+      '<div class="tile"><div class="k">朝の平均</div><div class="v">'+pair(wm)+'</div><div class="d">7日間・'+wm.length+'回</div></div>'+
+      '<div class="tile"><div class="k">夜の平均</div><div class="v">'+pair(we)+'</div><div class="d">7日間・'+we.length+'回</div></div>'+
       '<div class="tile"><div class="k">連続記録</div><div class="v">'+streak+'日</div><div class="d">今日：朝'+(hasM?"✓":"—")+' 夜'+(hasE?"✓":"—")+'</div></div>'+
     '</div>';
 }
@@ -1025,10 +1102,10 @@ function renderLog(){
     var dk=dayKey(r.t);
     if(dk!==lastDay){ if(lastDay) h+='</ul>'; h+='<div class="daysep">'+fmtDay(r.t)+'</div><ul class="log">'; lastDay=dk; }
     var tags=r.tags.map(function(k){return TAGMAP[k];}).join(" ");
-    h+='<li><div class="when">'+SLOTLABEL[r.slot]+'<br>'+fmtTime(r.t)+'</div>'+
+    h+='<li class="tap" data-row="'+esc(r.id)+'"><div class="when">'+SLOTLABEL[r.slot]+'<br>'+fmtTime(r.t)+'</div>'+
        '<div class="grow"><div class="vals">'+r.sys+'/'+r.dia+(r.pulse!=null?' <small>脈'+r.pulse+'</small>':'')+(r.n>1?' <small>(2回平均)</small>':'')+'</div>'+
        '<div class="meta">'+badge(r.sys,r.dia)+(tags?' '+esc(tags):'')+(r.memo?'<br>'+esc(r.memo):'')+'</div></div>'+
-       '<button class="iconbtn" data-edit="'+esc(r.id)+'" aria-label="編集">✎</button>'+
+       '<button class="editbtn" data-edit="'+esc(r.id)+'">✎ 修正</button>'+
        '<button class="iconbtn" data-del="'+esc(r.id)+'" aria-label="削除">🗑</button></li>';
   });
   h+='</ul>';
@@ -1037,17 +1114,22 @@ function renderLog(){
 }
 var pendingDel=null;
 $("logBody").addEventListener("click",function(e){
-  var b=e.target.closest("button"); if(!b)return;
+  var b=e.target.closest("button");
+  if(!b){ var li=e.target.closest("li.tap"); if(li) startEdit(li.dataset.row); return; }
   if(b.dataset.edit){ startEdit(b.dataset.edit); return; }
-  if(b.dataset.del){
-    var r=readings.find(function(x){return x.id===b.dataset.del;}); if(!r)return;
+  if(b.dataset.del){ askDelete(b.dataset.del); }
+});
+function askDelete(id){
+  {
+    var r=readings.find(function(x){return x.id===id;}); if(!r)return;
     pendingDel=r.id; $("confirmText").textContent=fmtDay(r.t)+" "+fmtTime(r.t)+"　"+r.sys+"/"+r.dia+"（元に戻せません）";
     $("confirmModal").classList.add("on");
   }
-});
+}
 $("cNo").addEventListener("click",function(){ pendingDel=null; $("confirmModal").classList.remove("on"); });
 $("cYes").addEventListener("click",function(){
   var id=pendingDel; pendingDel=null; $("confirmModal").classList.remove("on"); if(!id)return;
+  if(editingId===id) resetForm();
   removeReading(id).then(function(){toast("削除しました");},function(e){toast(errMsg(e));});
 });
 function anchorDownload(name, text, type){

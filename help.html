@@ -7,10 +7,22 @@
 <meta name="theme-color" content="#2a78d6">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>
+(function(){var t={theme:"dark",accent:"orange",size:"normal"};try{var o=JSON.parse(localStorage.getItem("bpnote.theme")||"null");if(o)t=Object.assign(t,o);}catch(e){}
+var mq=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)");var el=document.documentElement;
+el.setAttribute("data-mode",(t.theme==="dark"||(t.theme==="auto"&&mq&&mq.matches))?"dark":"light");el.setAttribute("data-accent",t.accent);el.setAttribute("data-size",t.size);})();
+</script>
 <style>
 :root{color-scheme:light;--page:#f9f9f7;--card:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#8a897f;--grid:#e1e0d9;--ring:rgba(11,11,11,.10);--accent:#2a78d6;--wash:rgba(42,120,214,.08);
   --good:#0ca30c;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b}
-@media (prefers-color-scheme:dark){:root{color-scheme:dark;--page:#0d0d0d;--card:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#8f8e86;--grid:#2c2c2a;--ring:rgba(255,255,255,.10);--accent:#3987e5;--wash:rgba(57,135,229,.14)}}
+:root[data-mode="dark"]{color-scheme:dark;--page:#0d0d0d;--card:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#8f8e86;--grid:#2c2c2a;--ring:rgba(255,255,255,.10);--accent:#3987e5;--wash:rgba(57,135,229,.14)}
+:root[data-accent="green"]{--accent:#1a8a5a;--wash:rgba(26,138,90,.10)}
+:root[data-accent="orange"]{--accent:#d9682b;--wash:rgba(217,104,43,.10)}
+:root[data-accent="pink"]{--accent:#d14d8a;--wash:rgba(209,77,138,.10)}
+:root[data-mode="dark"][data-accent="green"]{--accent:#2fae74;--wash:rgba(47,174,116,.16)}
+:root[data-mode="dark"][data-accent="orange"]{--accent:#e8793a;--wash:rgba(232,121,58,.18)}
+:root[data-mode="dark"][data-accent="pink"]{--accent:#e0609a;--wash:rgba(224,96,154,.16)}
+:root[data-size="large"] .wrap{zoom:1.15}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--page);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Segoe UI",sans-serif;-webkit-text-size-adjust:100%;line-height:1.7}
 body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
@@ -45,7 +57,7 @@ figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
 <div class="wrap">
 
 <nav class="toc" aria-label="目次">
-  <a href="#intro">はじめに</a><a href="#home">ホーム画面に追加</a><a href="#measure">測り方</a><a href="#rec">記録</a><a href="#chart">グラフ</a><a href="#ana">分析・対策</a><a href="#log">履歴・バックアップ</a><a href="#google">スプレッドシート連携</a><a href="#faq">よくある質問</a><a href="#caution">注意事項</a>
+  <a href="#intro">はじめに</a><a href="#home">ホーム画面に追加</a><a href="#measure">測り方</a><a href="#rec">記録</a><a href="#chart">グラフ</a><a href="#ana">分析・対策</a><a href="#log">履歴・バックアップ</a><a href="#google">スプレッドシート連携</a><a href="#design">画面デザイン</a><a href="#faq">よくある質問</a><a href="#caution">注意事項</a>
 </nav>
 
 <section id="intro">
@@ -157,7 +169,7 @@ figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
   <p>記録は新しい順に、日付ごとに並びます（画面には最新300件まで）。</p>
   <figure><img src="img/06_log.jpg" alt="履歴画面" loading="lazy"><figcaption>✎で編集、🗑で削除</figcaption></figure>
   <ul>
-    <li><b>編集</b>：「✎」を押すと記録タブに戻り、直して「変更を保存」</li>
+    <li><b>修正</b>：記録の行か「✎ 修正」を押すと記録タブに戻ります。数値・日時・状況・メモを直して「変更を保存」。修正中の画面からその記録を削除することもできます</li>
     <li><b>削除</b>：「🗑」を押し、確認画面で「削除する」。元には戻せません</li>
     <li><b>CSVをコピー</b>：全件を表の形でコピー。メールやメモに貼り付けられます</li>
   </ul>
@@ -199,6 +211,17 @@ figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
   </ul>
 </section>
 
+<section id="design">
+  <h2>画面デザインを変える</h2>
+  <p>「履歴」タブの「画面デザイン」で、見た目を好みに変えられます。設定はこの端末に保存されます。</p>
+  <ul>
+    <li><b>テーマ</b>：自動（スマホのライト／ダークモードに合わせる）・白基調・黒基調</li>
+    <li><b>アクセントカラー</b>：ボタンや選択中のタブの色。青・緑・オレンジ・ピンク</li>
+    <li><b>文字の大きさ</b>：標準・大きめ</li>
+  </ul>
+  <p>はじめは「黒基調・オレンジ」になっています。</p>
+</section>
+
 <section id="faq">
   <h2>よくある質問</h2>
   <table>
@@ -210,7 +233,7 @@ figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
     <tr><td>スプレッドシートを消してしまった</td><td>「今すぐ同期」を押すと、新しいスプレッドシートが作られて端末の記録が書き込まれます</td></tr>
     <tr><td>「記録を保存できません」と出る</td><td>プライベートモード（シークレットモード）をオフにして、通常のSafariやChromeで開いてください</td></tr>
     <tr><td>分析が表示されない</td><td>選んだ期間に3回以上の記録が必要です。期間を30日にするか、記録を続けてください</td></tr>
-    <tr><td>入力を間違えた</td><td>履歴タブの「✎」で直すか、「🗑」で削除します</td></tr>
+    <tr><td>入力を間違えた</td><td>記録タブの最新の記録にある「✎ 修正」、または履歴タブで記録の行を押して直します。不要なら「🗑」で削除します</td></tr>
     <tr><td>他の人にも使ってほしい</td><td>このアプリのURLを送るだけです。記録はそれぞれの端末に保存され、お互いには見えません</td></tr>
   </table>
 </section>
