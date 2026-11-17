@@ -96,6 +96,9 @@ header{gap:10px}
 .err{color:var(--crit);font-size:13px;margin:8px 0 0}
 .helpbtn{font-size:13px;font-weight:700;color:var(--accent);text-decoration:none;border:1px solid var(--accent);border-radius:999px;padding:4px 11px;white-space:nowrap}
 .helpbtn:active{background:var(--wash)}
+.gearbtn{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--axis);background:var(--surface);color:var(--ink2);font-size:18px;line-height:1;cursor:pointer;padding:0}
+.gearbtn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:var(--wash)}
+.backbtn{border:0;background:none;color:var(--accent);font:inherit;font-weight:700;font-size:15px;padding:6px 8px 6px 0;cursor:pointer}
 .card{background:var(--card);border:1px solid var(--ring);border-radius:14px;padding:14px;margin-bottom:12px}
 .card h2{font-size:15px;margin:0 0 10px}
 .card h3{font-size:14px;margin:14px 0 6px}
@@ -205,7 +208,7 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
 <div class="wrap">
   <header>
     <h1>血圧ノート</h1>
-    <span class="hdr-r"><button type="button" class="sub syncchip" id="syncState">読み込み中…</button><a class="helpbtn" href="help.html">？ 使い方</a></span>
+    <span class="hdr-r"><button type="button" class="sub syncchip" id="syncState">読み込み中…</button><a class="helpbtn" href="help.html">？ 使い方</a><button type="button" class="gearbtn" id="openSet" aria-label="設定">⚙</button></span>
   </header>
   <div class="banner" id="banner"></div>
 
@@ -340,6 +343,13 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
         <button class="btn ghost" id="copyCsv" type="button">CSVをコピー</button>
       </div>
       <div id="logBody"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-set">
+    <div class="row" style="margin:0 2px 10px;gap:6px">
+      <button type="button" class="backbtn" id="setBack">‹ 戻る</button>
+      <h2 style="margin:0;font-size:18px">設定</h2>
     </div>
     <div class="card" id="designCard">
       <h2>画面デザイン</h2>
@@ -748,6 +758,10 @@ document.addEventListener("visibilitychange", function(){
   if(document.visibilityState==="visible" && GCID && G.connected && tokenValid()) sync(false);
 });
 
+// ---------- 設定画面 ----------
+$("openSet").addEventListener("click",function(){ switchTab($("v-set").classList.contains("on")?lastTab:"v-set"); });
+$("setBack").addEventListener("click",function(){ switchTab(lastTab); });
+
 // ---------- 画面デザイン ----------
 function renderDesign(){
   var t=window.__theme?__theme.get():{theme:"dark",accent:"orange",size:"normal"};
@@ -1101,10 +1115,10 @@ function renderLog(){
   list.forEach(function(r){
     var dk=dayKey(r.t);
     if(dk!==lastDay){ if(lastDay) h+='</ul>'; h+='<div class="daysep">'+fmtDay(r.t)+'</div><ul class="log">'; lastDay=dk; }
-    var tags=r.tags.map(function(k){return TAGMAP[k];}).join(" ");
+    var tags=r.tags.map(function(k){return '<span style="white-space:nowrap">'+esc(TAGMAP[k])+'</span>';}).join(" ");
     h+='<li class="tap" data-row="'+esc(r.id)+'"><div class="when">'+SLOTLABEL[r.slot]+'<br>'+fmtTime(r.t)+'</div>'+
        '<div class="grow"><div class="vals">'+r.sys+'/'+r.dia+(r.pulse!=null?' <small>脈'+r.pulse+'</small>':'')+(r.n>1?' <small>(2回平均)</small>':'')+'</div>'+
-       '<div class="meta">'+badge(r.sys,r.dia)+(tags?' '+esc(tags):'')+(r.memo?'<br>'+esc(r.memo):'')+'</div></div>'+
+       '<div class="meta">'+badge(r.sys,r.dia)+(tags?' '+tags:'')+(r.memo?'<br>'+esc(r.memo):'')+'</div></div>'+
        '<button class="editbtn" data-edit="'+esc(r.id)+'">✎ 修正</button>'+
        '<button class="iconbtn" data-del="'+esc(r.id)+'" aria-label="削除">🗑</button></li>';
   });
@@ -1212,7 +1226,10 @@ $("saveTarget").addEventListener("click",function(){
 });
 
 // ---------- tabs ----------
+var lastTab="v-rec";
 function switchTab(v){
+  if(v!=="v-set") lastTab=v;
+  $("openSet").setAttribute("aria-pressed", v==="v-set"?"true":"false");
   [].forEach.call(document.querySelectorAll("nav.tabs button"),function(b){ b.setAttribute("aria-selected", b.dataset.v===v?"true":"false"); });
   [].forEach.call(document.querySelectorAll("section.view"),function(s){ s.classList.toggle("on", s.id===v); });
   if(v==="v-chart") renderChart();

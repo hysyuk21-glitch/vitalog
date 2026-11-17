@@ -70,9 +70,10 @@ figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
     <tr><td>記録</td><td>血圧・脈拍・その日の状況を入力する</td></tr>
     <tr><td>グラフ</td><td>血圧と脈拍の推移を見る</td></tr>
     <tr><td>分析・対策</td><td>平均・判定・傾向と、あなた向けの対策を見る</td></tr>
-    <tr><td>履歴</td><td>記録の一覧、編集・削除、CSVやバックアップの保存</td></tr>
+    <tr><td>履歴</td><td>記録の一覧、修正・削除、CSVのコピー</td></tr>
+    <tr><td>⚙ 設定（右上）</td><td>画面デザイン、Googleスプレッドシート連携、バックアップ</td></tr>
   </table>
-  <div class="note"><b>データの保存場所：</b>記録はこの端末のブラウザの中に保存され、インターネット上には送信されません（<a href="#google">Googleスプレッドシート連携</a>を使った場合だけ、あなたのGoogleドライブにも保存されます）。そのぶん、ブラウザのデータを消すと記録も消えるので、ときどきバックアップを取ってください（<a href="#log">履歴・バックアップ</a>）。</div>
+  <div class="note"><b>データの保存場所：</b>記録はこの端末のブラウザの中に保存され、インターネット上には送信されません（<a href="#google">Googleスプレッドシート連携</a>を使った場合だけ、あなたのGoogleドライブにも保存されます）。そのぶん、ブラウザのデータを消すと記録も消えるので、ときどきバックアップを取ってください（<a href="#log">バックアップ</a>）。</div>
 </section>
 
 <section id="home">
@@ -165,7 +166,7 @@ figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
 </section>
 
 <section id="log">
-  <h2>履歴タブ：記録の管理とバックアップ</h2>
+  <h2>履歴タブ：記録の管理</h2>
   <p>記録は新しい順に、日付ごとに並びます（画面には最新300件まで）。</p>
   <figure><img src="img/06_log.jpg" alt="履歴画面" loading="lazy"><figcaption>✎で編集、🗑で削除</figcaption></figure>
   <ul>
@@ -173,7 +174,7 @@ figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
     <li><b>削除</b>：「🗑」を押し、確認画面で「削除する」。元には戻せません</li>
     <li><b>CSVをコピー</b>：全件を表の形でコピー。メールやメモに貼り付けられます</li>
   </ul>
-  <h3>バックアップ（履歴タブの一番下）</h3>
+  <h3>バックアップ（右上の ⚙ 設定）</h3>
   <figure><img src="img/07_backup.jpg" alt="バックアップ欄" loading="lazy"><figcaption>保存・CSV・復元の3つのボタン</figcaption></figure>
   <table>
     <tr><th>ボタン</th><th>使い方</th></tr>
@@ -190,7 +191,7 @@ figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
   <p>Googleアカウントがあれば、記録を自分のGoogleドライブのスプレッドシートに自動で保存できます。スマホを替えても、ログインし直すだけで記録を引き継げます。使わなくてもアプリは今まで通り使えます。</p>
   <h3>はじめ方</h3>
   <ol>
-    <li>「履歴」タブを開き、「Googleスプレッドシート連携」の<b>「Googleでログインして連携」</b>を押す</li>
+    <li>画面右上の<b>⚙（設定）</b>を開き、「Googleスプレッドシート連携」の<b>「Googleでログインして連携」</b>を押す</li>
     <li>Googleアカウントを選び、ファイルへのアクセスを<b>許可</b>する</li>
     <li>ドライブに「血圧ノート（vitalog）」というスプレッドシートが自動で作られ、今までの記録が書き込まれる</li>
   </ol>
@@ -213,7 +214,7 @@ figcaption{text-align:center;font-size:12px;color:var(--ink2);margin-top:6px}
 
 <section id="design">
   <h2>画面デザインを変える</h2>
-  <p>「履歴」タブの「画面デザイン」で、見た目を好みに変えられます。設定はこの端末に保存されます。</p>
+  <p>画面右上の<b>⚙（設定）</b>の「画面デザイン」で、見た目を好みに変えられます。設定はこの端末に保存されます。</p>
   <ul>
     <li><b>テーマ</b>：自動（スマホのライト／ダークモードに合わせる）・白基調・黒基調</li>
     <li><b>アクセントカラー</b>：ボタンや選択中のタブの色。青・緑・オレンジ・ピンク</li>
