@@ -516,12 +516,12 @@ function putReading(r){
   var i=readings.findIndex(function(x){return x.id===r.id;});
   if(i>=0) readings[i]=r; else readings.push(r);
   readings.sort(function(a,b){return a.t-b.t;});
-  saveLocal(); renderAll(); scheduleSync();
+  saveLocal(); renderAll(); scheduleSync(true);
   return Promise.resolve();
 }
 function removeReading(id){
   if(mode==="db") return db.collection("bp").doc(id).delete();
-  readings=readings.filter(function(x){return x.id!==id;}); addTomb(id); saveLocal(); renderAll(); scheduleSync();
+  readings=readings.filter(function(x){return x.id!==id;}); addTomb(id); saveLocal(); renderAll(); scheduleSync(true);
   return Promise.resolve();
 }
 function putTarget(){
@@ -694,7 +694,7 @@ function mergeWith(sheetRows, sheetTombs){
   setTombs(Object.keys(dead));
   saveLocal();
 }
-function sync(interactive){
+function sync(interactive, quiet){
   if(!GCID) return Promise.resolve();
   if(G.syncing){ G.again=true; return Promise.resolve(); }
   G.syncing=true; G.err=""; renderGoogle();
@@ -723,16 +723,22 @@ function sync(interactive){
     else if(c==="not_ready"){ G.err="Googleを読み込み中です。数秒後にもう一度お試しください。"; }
     else if(c==="http" && e.status===403){ G.err="Googleに拒否されました（設定が未完了の可能性があります）。"; }
     else { G.err="同期できませんでした。通信状態を確認してもう一度お試しください。"; }
+    if(quiet && c!=="http") G.err="";
     gSave();
   }).then(function(){
     G.syncing=false; renderGoogle();
     if(G.again){ G.again=false; if(tokenValid()) sync(false); }
   });
 }
-function scheduleSync(){
+function scheduleSync(fromUser){
   if(!GCID || !G.connected) return;
   G.dirty=true; gSave(); renderGoogle();
-  if(!tokenValid()) return;
+  if(!tokenValid()){
+    // ログインが切れていても、ボタン操作の直後なら自動で再ログインして同期する
+    // （許可済みなら確認画面は出ず、一瞬で戻る）
+    if(fromUser && G.tc && !G.syncing){ clearTimeout(G.timer); sync(true, true); }
+    return;
+  }
   clearTimeout(G.timer); G.timer=setTimeout(function(){ sync(false); }, 1200);
 }
 function disconnect(){
