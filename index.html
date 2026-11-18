@@ -66,6 +66,27 @@
 .swatch[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 3px var(--page) inset}
 .swatch span{position:absolute;left:0;right:0;top:48px;font-size:11px;color:var(--ink2);white-space:nowrap}
 .swatches{padding-bottom:18px}
+/* 週のふりかえり */
+.wk{border:1px solid var(--accent);background:linear-gradient(180deg,var(--wash),transparent 70%),var(--card)}
+.wk .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.wk .ttl{font-size:16px;font-weight:800}
+.wk .rng{font-size:12px;color:var(--ink2);margin-top:2px}
+.wk .x{border:0;background:none;color:var(--muted);font-size:18px;padding:2px 4px;cursor:pointer}
+.wk .days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:14px 0 4px}
+.wk .d{text-align:center;font-size:11px;color:var(--ink2)}
+.wk .d .pp{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:5px}
+.wk .pip{width:22px;height:9px;border-radius:5px;border:1.5px solid var(--axis)}
+.wk .pip.on{background:var(--accent);border-color:var(--accent)}
+.wk .lg{font-size:11px;color:var(--muted);text-align:right;margin-bottom:12px}
+.wk .chg{font-size:11px;font-weight:700;margin-top:2px;color:var(--ink2)}
+.wk .chg.good{color:var(--goodtext)} .wk .chg.bad{color:var(--crit)}
+.wk .ins{margin-top:12px;border-top:1px solid var(--grid);padding-top:10px}
+.wk .goal{margin-top:10px;background:var(--surface);border:1px dashed var(--accent);border-radius:10px;padding:10px 12px;font-size:13px}
+.wk .goal b{color:var(--accent)}
+.wk .acts{display:flex;gap:8px;margin-top:12px}
+.wk .acts button{flex:1}
+.wkopen{display:block;width:100%;text-align:left;border:1px solid var(--ring);background:var(--card);color:var(--ink);border-radius:14px;padding:12px 14px;font:inherit;font-weight:700;margin-bottom:12px;cursor:pointer}
+.wkopen span{float:right;color:var(--muted);font-weight:400}
 /* 記録の修正 */
 .log li.tap{cursor:pointer;border-radius:10px}
 .log li.tap:active{background:var(--wash)}
@@ -214,6 +235,7 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
 
   <!-- 記録 -->
   <section class="view on" id="v-rec">
+    <div id="wkTop"></div>
     <div class="card" id="todayCard"></div>
 
     <div class="card">
@@ -307,6 +329,7 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
 
   <!-- 分析・対策 -->
   <section class="view" id="v-ana">
+    <div id="wkAna"></div>
     <div class="card">
       <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap">
         <h2 style="margin:0">分析</h2>
@@ -778,6 +801,93 @@ function renderDesign(){
 });
 renderDesign();
 
+
+// ---------- 週のふりかえり ----------
+var GOALS={alcohol:"休肝日を2日つくる",salty:"汁物は1日1杯までにする",sleep:"寝る時刻を毎日そろえる",stress:"寝る前に3分ゆっくり深呼吸",cold:"朝は部屋を暖めてから動く",coffee:"測る前30分はカフェインを控える"};
+function weekStart(t){ var d=new Date(startOfDay(t)); var w=(d.getDay()+6)%7; d.setDate(d.getDate()-w); return d.getTime(); }
+function weekData(from){
+  var to=new Date(from); to.setDate(to.getDate()+7); to=to.getTime();
+  var a=readings.filter(function(r){return r.t>=from && r.t<to;});
+  var M=a.filter(function(r){return r.slot==="morning";}), E=a.filter(function(r){return r.slot==="evening";});
+  var S=function(x){return x.map(function(r){return r.sys;});}, D=function(x){return x.map(function(r){return r.dia;});};
+  return {from:from,to:to,a:a,M:M,E:E,
+    m:M.length?{s:avg(S(M)),d:avg(D(M))}:null, e:E.length?{s:avg(S(E)),d:avg(D(E))}:null,
+    rate:a.length?a.filter(function(r){return r.sys<target.sys&&r.dia<target.dia;}).length/a.length*100:null};
+}
+function chgHtml(cur,prev,lowerIsBetter,unit){
+  if(cur==null||prev==null) return '<div class="chg">前週データなし</div>';
+  var d=Math.round(cur-prev); if(d===0) return '<div class="chg">前週と同じ</div>';
+  var good=lowerIsBetter? d<0 : d>0;
+  return '<div class="chg '+(good?'good':'bad')+'">'+(d<0?'▼':'▲')+Math.abs(d)+(unit||'')+' 前週より</div>';
+}
+function weeklyHtml(withClose){
+  var cur=weekStart(Date.now()), lf=cur-7*DAY; lf=weekStart(lf+DAY/2);
+  var L=weekData(lf), P=weekData(weekStart(lf-DAY*3.5));
+  if(!L.a.length && !P.a.length) return "";
+  var endD=new Date(L.to-DAY);
+  var h='<div class="card wk"><div class="hd"><div><div class="ttl">🗓 先週のふりかえり</div><div class="rng">'+fmtDay(L.from)+' 〜 '+fmtDay(endD.getTime())+'</div></div>'+(withClose?'<button class="x" data-wk="close" aria-label="閉じる">✕</button>':'')+'</div>';
+  h+='<div class="days">';
+  var daysLogged=0, both=0;
+  for(var i=0;i<7;i++){
+    var ds=new Date(L.from); ds.setDate(ds.getDate()+i); var k=dayKey(ds.getTime());
+    var dm=L.a.some(function(r){return dayKey(r.t)===k&&r.slot==="morning";}), de=L.a.some(function(r){return dayKey(r.t)===k&&r.slot==="evening";});
+    if(L.a.some(function(r){return dayKey(r.t)===k;})) daysLogged++; if(dm&&de) both++;
+    h+='<div class="d">'+"月火水木金土日"[i]+'<div class="pp"><i class="pip'+(dm?' on':'')+'"></i><i class="pip'+(de?' on':'')+'"></i></div></div>';
+  }
+  h+='</div><div class="lg">上段＝朝・下段＝夜　記録 '+daysLogged+'日／7日（'+L.a.length+'回）</div>';
+  if(L.a.length<3){
+    h+='<p class="small" style="margin:6px 0 0;line-height:1.7">先週は記録が少なめでした。今週は<b>朝と夜に1回ずつ</b>から始めてみましょう。続けるほど、傾向やあなた向けのヒントが見えてきます。</p>';
+    h+='<div class="acts"><button class="btn" data-wk="ok" style="padding:9px;font-size:14px">OK</button></div></div>';
+    return h;
+  }
+  function pr(x){ return x? r0(x.s)+'/'+r0(x.d) : '–'; }
+  h+='<div class="tiles">'+
+    '<div class="tile"><div class="k">朝の平均</div><div class="v">'+pr(L.m)+'</div>'+chgHtml(L.m&&L.m.s,P.m&&P.m.s,true)+'</div>'+
+    '<div class="tile"><div class="k">夜の平均</div><div class="v">'+pr(L.e)+'</div>'+chgHtml(L.e&&L.e.s,P.e&&P.e.s,true)+'</div>'+
+    '<div class="tile"><div class="k">目標達成</div><div class="v">'+r0(L.rate)+'%</div>'+chgHtml(L.rate,P.rate,false,'pt')+'</div></div>';
+  // 気づき
+  var ins=[];
+  if(both===7) ins.push('🎉 <b>朝夜とも毎日記録できました。</b>');
+  var base=L.m&&P.m?['朝',L.m.s-P.m.s]:(L.e&&P.e?['夜',L.e.s-P.e.s]:null);
+  if(base && base[1]<=-3) ins.push('👍 <b>'+base[0]+'の平均が'+r0(-base[1])+'下がりました。</b>');
+  else if(base && base[1]>=3) ins.push('📈 '+base[0]+'の平均が<b>'+r0(base[1])+'上がりました。</b>寒さや忙しさに心当たりがないか振り返ってみましょう');
+  var fx=[];
+  TAGS.forEach(function(t){
+    if(t.k==="med"||t.k==="exercise") return;
+    var w=L.a.filter(function(r){return r.tags.indexOf(t.k)>=0;}), wo=L.a.filter(function(r){return r.tags.indexOf(t.k)<0;});
+    if(w.length>=2&&wo.length>=2){ var d=avg(w.map(function(r){return r.sys;}))-avg(wo.map(function(r){return r.sys;})); if(d>=5) fx.push({k:t.k,label:t.label,d:d,n:w.length}); }
+  });
+  fx.sort(function(a,b){return b.d-a.d;});
+  if(fx.length) ins.push(fx[0].label.split(" ")[0]+' '+fx[0].label.replace(/^\S+\s/,"")+'の日は上が <b>+'+r0(fx[0].d)+'</b> 高め（'+fx[0].n+'回）');
+  var low=L.a.reduce(function(a,r){return (!a||r.sys<a.sys)?r:a;},null);
+  if(low) ins.push('📉 いちばん低かったのは '+fmtDay(low.t)+SLOTLABEL[low.slot]+'の <b>'+low.sys+'/'+low.dia+'</b>');
+  h+='<div class="ins"><div class="small ink2" style="font-weight:700">先週の気づき</div><ul class="tips">'+ins.slice(0,3).map(function(x){return '<li>'+x+'</li>';}).join("")+'</ul></div>';
+  // 目標
+  var goal, why="先週のデータで一番差が大きかった習慣から提案しています";
+  if(fx.length && GOALS[fx[0].k]) goal=GOALS[fx[0].k];
+  else if(L.m&&L.e&&L.m.s-L.e.s>=15){ goal="夜のお酒と塩分を控えめに"; why="朝が夜より高めの傾向があるため提案しています"; }
+  else if(daysLogged<5){ goal="朝夜の記録を5日以上"; why="記録が増えるほど分析が正確になります"; }
+  else if(L.rate<50){ goal="1日30分歩く"; why="血圧を下げる基本の習慣から提案しています"; }
+  else { goal="今の習慣をキープ"; why="目標の範囲内の日が多い良い状態です"; }
+  h+='<div class="goal">今週のひとこと目標：<b>'+esc(goal)+'</b><br><span class="ink2" style="font-size:12px">'+why+'</span></div>';
+  h+='<div class="acts"><button class="btn ghost" data-wk="chart">グラフで見る</button>'+(withClose?'<button class="btn" data-wk="ok" style="padding:9px;font-size:14px">OK</button>':'')+'</div></div>';
+  return h;
+}
+function wkSeenKey(){ return "w"+dayKey(weekStart(Date.now())); }
+function renderWeekly(){
+  var seen=null; try{ seen=localStorage.getItem("bpnote.weekSeen"); }catch(e){}
+  $("wkTop").innerHTML = (seen===wkSeenKey()) ? "" : weeklyHtml(true);
+  var anaOpen=$("wkAna").dataset.open==="1", has=!!weeklyHtml(false);
+  $("wkAna").innerHTML = !has ? "" : (anaOpen ? weeklyHtml(false) : '<button class="wkopen" data-wk="open">🗓 先週のふりかえりを見る<span>›</span></button>');
+}
+document.addEventListener("click",function(e){
+  var b=e.target.closest("[data-wk]"); if(!b) return;
+  var a=b.dataset.wk;
+  if(a==="close"||a==="ok"){ try{ localStorage.setItem("bpnote.weekSeen", wkSeenKey()); }catch(err){} renderWeekly(); }
+  else if(a==="open"){ $("wkAna").dataset.open="1"; renderWeekly(); }
+  else if(a==="chart"){ ui.range=30; [].forEach.call($("rangeSeg").children,function(x){x.setAttribute("aria-pressed",x.dataset.v==="30"?"true":"false");}); switchTab("v-chart"); }
+});
+
 // ---------- 記録 form ----------
 function setSlot(v){ ui.slot=v; [].forEach.call($("slotSeg").children,function(b){b.setAttribute("aria-pressed", b.dataset.v===v?"true":"false");}); }
 function renderTagChips(){
@@ -1238,7 +1348,7 @@ function switchTab(v){
 document.querySelector("nav.tabs").addEventListener("click",function(e){ var b=e.target.closest("button"); if(b) switchTab(b.dataset.v); });
 
 function renderAll(){
-  renderToday(); renderLog(); renderAnalysis();
+  renderToday(); renderLog(); renderAnalysis(); renderWeekly();
   if(document.activeElement!==$("tSys") && document.activeElement!==$("tDia")){ $("tSys").value=target.sys; $("tDia").value=target.dia; }
   if($("v-chart").classList.contains("on")) renderChart();
 }
