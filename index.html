@@ -162,6 +162,10 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--axis);background:var(--surface);color:var(--ink2);border-radius:999px;padding:6px 11px;font:inherit;font-size:13px;cursor:pointer}
 .chip[aria-pressed="true"]{border-color:var(--accent);background:var(--wash);color:var(--ink);font-weight:700}
+.irrbtn{display:flex;align-items:center;gap:8px;width:100%;margin-top:10px;border:1.5px dashed var(--axis);background:var(--surface);color:var(--ink2);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;cursor:pointer;text-align:left}
+.irrbtn .ck{margin-left:auto;font-size:13px}
+.irrbtn[aria-pressed="true"]{border-style:solid;border-color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,var(--surface));color:var(--ink);font-weight:700}
+.irrtag{display:inline-block;white-space:nowrap;border:1px solid var(--warn);color:var(--ink);border-radius:999px;padding:0 7px;font-size:12px;font-weight:700}
 .row{display:flex;gap:8px;align-items:center}
 .btn{border:0;border-radius:12px;padding:13px 16px;font:inherit;font-weight:700;cursor:pointer;background:var(--accent);color:var(--accentInk);width:100%;font-size:16px}
 .btn.ghost{background:none;color:var(--ink2);border:1px solid var(--axis);font-weight:500;font-size:14px;padding:9px 12px;width:auto}
@@ -253,6 +257,7 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
           <div><label class="f" for="dia">最低（下）</label><input id="dia" type="number" inputmode="numeric" min="30" max="180" placeholder="80" required></div>
           <div><label class="f" for="pulse">脈拍</label><input id="pulse" type="number" inputmode="numeric" min="30" max="200" placeholder="70"></div>
         </div>
+        <button type="button" class="irrbtn" id="irrBtn" aria-pressed="false">💓 血圧計に不整脈マークが出た<span class="ck" id="irrCk">タップで記録</span></button>
         <details class="more" id="second">
           <summary>2回目も測った（平均して保存）</summary>
           <div class="grid3">
@@ -493,7 +498,7 @@ function normalize(id, o){
   if(!o || typeof o.t!=="number" || typeof o.sys!=="number" || typeof o.dia!=="number") return null;
   return {id:id, t:o.t, sys:o.sys, dia:o.dia, pulse:(typeof o.pulse==="number"?o.pulse:null),
     slot:(o.slot in SLOTLABEL?o.slot:guessSlot(o.t)), tags:Array.isArray(o.tags)?o.tags.filter(function(k){return TAGMAP[k];}):[],
-    memo:typeof o.memo==="string"?o.memo:"", n:(typeof o.n==="number"?o.n:1),
+    memo:typeof o.memo==="string"?o.memo:"", n:(typeof o.n==="number"?o.n:1), irr:o.irr===true,
     u:(typeof o.u==="number"?o.u:o.t)};
 }
 function loadLocal(){
@@ -508,7 +513,7 @@ function saveLocal(){
 function newId(){ return "r"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
 function putReading(r){
-  var body={t:r.t,sys:r.sys,dia:r.dia,pulse:r.pulse,slot:r.slot,tags:r.tags,memo:r.memo,n:r.n};
+  var body={t:r.t,sys:r.sys,dia:r.dia,pulse:r.pulse,slot:r.slot,tags:r.tags,memo:r.memo,n:r.n,irr:!!r.irr};
   if(mode==="db"){
     return db.collection("bp").doc(r.id).set(body);
   }
@@ -573,7 +578,7 @@ var CFG = window.VITALOG_CONFIG || {};
 var GCID = (CFG.googleClientId||"").trim();
 var GSCOPE = "https://www.googleapis.com/auth/drive.file";
 var SHEET_TITLE = "血圧ノート（vitalog）";
-var HEADER = ["日付","時刻","タイミング","最高","最低","脈拍","状況","メモ","測定回数","ID","記録日時(ms)","更新日時(ms)"];
+var HEADER = ["日付","時刻","タイミング","最高","最低","脈拍","状況","メモ","測定回数","ID","記録日時(ms)","更新日時(ms)","不整脈"];
 var G = {token:null, exp:0, sheetId:null, lastSync:0, connected:false, dirty:false, syncing:false, again:false, tc:null, pending:null, err:"", confirmOff:false};
 var SLOTFROM = {"朝":"morning","夜":"evening","その他":"other"};
 var TAGFROM = {}; TAGS.forEach(function(t){ TAGFROM[t.label.replace(/^\S+\s/,"")] = t.k; });
@@ -660,7 +665,7 @@ function ensureSheet(){
 function cellSafe(v){ v=String(v==null?"":v); return /^[=+\-@]/.test(v) ? "'"+v : v; }
 function toRow(r){
   return [dayKey(r.t), fmtTime(r.t), SLOTLABEL[r.slot], r.sys, r.dia, r.pulse==null?"":r.pulse,
-    r.tags.map(function(k){return TAGMAP[k].replace(/^\S+\s/,"");}).join("・"), cellSafe(r.memo), r.n, r.id, r.t, r.u];
+    r.tags.map(function(k){return TAGMAP[k].replace(/^\S+\s/,"");}).join("・"), cellSafe(r.memo), r.n, r.id, r.t, r.u, r.irr?"あり":""];
 }
 function fromRow(row){
   if(!row || row.length<12) return null;
@@ -669,10 +674,10 @@ function fromRow(row){
   var tags=String(row[6]||"").split("・").map(function(x){return TAGFROM[x.trim()];}).filter(Boolean);
   var pulse=row[5]===""||row[5]==null ? null : Number(row[5]);
   return normalize(id, {t:t, u:isFinite(u)?u:t, sys:Number(row[3]), dia:Number(row[4]), pulse:isFinite(pulse)?pulse:null,
-    slot:SLOTFROM[String(row[2])]||guessSlot(t), tags:tags, memo:String(row[7]==null?"":row[7]), n:Number(row[8])||1});
+    slot:SLOTFROM[String(row[2])]||guessSlot(t), tags:tags, memo:String(row[7]==null?"":row[7]), n:Number(row[8])||1, irr:/^(あり|true|1|○|〇)$/i.test(String(row[12]==null?"":row[12]).trim())});
 }
 function same(a,b){
-  return a.sys===b.sys && a.dia===b.dia && a.pulse===b.pulse && a.memo===b.memo && a.slot===b.slot && a.n===b.n && a.t===b.t &&
+  return a.sys===b.sys && a.dia===b.dia && a.pulse===b.pulse && a.memo===b.memo && a.slot===b.slot && a.n===b.n && a.t===b.t && !!a.irr===!!b.irr &&
     a.tags.slice().sort().join()===b.tags.slice().sort().join();
 }
 function mergeWith(sheetRows, sheetTombs){
@@ -700,7 +705,7 @@ function sync(interactive, quiet){
   G.syncing=true; G.err=""; renderGoogle();
   var rowsCount=0;
   return getToken(interactive).then(ensureSheet).then(function(id){
-    var rg="ranges="+encodeURIComponent("'記録'!A2:L")+"&ranges="+encodeURIComponent("'削除済み'!A2:A");
+    var rg="ranges="+encodeURIComponent("'記録'!A2:M")+"&ranges="+encodeURIComponent("'削除済み'!A2:A");
     return gfetch("GET", SHEETS+"/"+id+"/values:batchGet?"+rg+"&valueRenderOption=UNFORMATTED_VALUE");
   }).then(function(res){
     var vr=(res && res.valueRanges)||[];
@@ -711,7 +716,7 @@ function sync(interactive, quiet){
     var td=[["削除したID"]].concat(tombs().map(function(x){return [x];}));
     return gfetch("POST", SHEETS+"/"+G.sheetId+"/values:batchUpdate", {valueInputOption:"USER_ENTERED", data:[
       {range:"'記録'!A1", values:data}, {range:"'削除済み'!A1", values:td}]}).then(function(){
-      return gfetch("POST", SHEETS+"/"+G.sheetId+"/values:batchClear", {ranges:["'記録'!A"+(rowsCount+1)+":L", "'削除済み'!A"+(td.length+1)+":A"]});
+      return gfetch("POST", SHEETS+"/"+G.sheetId+"/values:batchClear", {ranges:["'記録'!A"+(rowsCount+1)+":M", "'削除済み'!A"+(td.length+1)+":A"]});
     });
   }).then(function(){
     G.connected=true; G.dirty=false; G.lastSync=Date.now(); gSave(); renderAll();
@@ -904,13 +909,15 @@ function renderTagChips(){
 $("tagChips").addEventListener("click",function(e){
   var b=e.target.closest(".chip"); if(!b)return; var k=b.dataset.k; ui.tags[k]=!ui.tags[k]; b.setAttribute("aria-pressed", ui.tags[k]?"true":"false");
 });
+function setIrr(v){ ui.irr=!!v; $("irrBtn").setAttribute("aria-pressed", ui.irr?"true":"false"); $("irrCk").textContent=ui.irr?"✓ 記録します":"タップで記録"; }
+$("irrBtn").addEventListener("click",function(){ setIrr(!ui.irr); });
 $("slotSeg").addEventListener("click",function(e){ var b=e.target.closest("button"); if(b) setSlot(b.dataset.v); });
 $("when").addEventListener("change",function(){ var t=new Date($("when").value).getTime(); if(!isNaN(t) && !editingId) setSlot(guessSlot(t)); });
 
 function resetForm(){
   editingId=null;
   ["sys","dia","pulse","sys2","dia2","pulse2","memo"].forEach(function(id){$(id).value="";});
-  $("second").open=false; ui.tags={}; renderTagChips();
+  $("second").open=false; ui.tags={}; renderTagChips(); setIrr(false);
   var now=Date.now(); $("when").value=toLocalInput(now); setSlot(guessSlot(now));
   $("formTitle").textContent="今日の血圧を記録"; $("saveBtn").textContent="記録する"; $("editRow").style.display="none";
   $("form").parentNode.classList.remove("editing");
@@ -921,7 +928,7 @@ function startEdit(id){
   $("sys").value=r.sys; $("dia").value=r.dia; $("pulse").value=r.pulse==null?"":r.pulse;
   ["sys2","dia2","pulse2"].forEach(function(i){$(i).value="";}); $("second").open=false;
   $("memo").value=r.memo; $("when").value=toLocalInput(r.t); setSlot(r.slot);
-  ui.tags={}; r.tags.forEach(function(k){ui.tags[k]=true;}); renderTagChips();
+  ui.tags={}; r.tags.forEach(function(k){ui.tags[k]=true;}); renderTagChips(); setIrr(r.irr);
   $("formTitle").textContent="記録を修正"; $("saveBtn").textContent="変更を保存"; $("editRow").style.display="flex";
   $("editBanner").textContent="✎ "+fmtDay(r.t)+" "+fmtTime(r.t)+"（"+SLOTLABEL[r.slot]+"）の記録 "+r.sys+"/"+r.dia+" を修正しています。数値・日時・状況・メモを直して「変更を保存」を押してください。";
   $("form").parentNode.classList.add("editing");
@@ -948,13 +955,14 @@ $("form").addEventListener("submit",function(e){
   var t=new Date($("when").value).getTime(); if(isNaN(t)) t=Date.now();
   var r={id:editingId||newId(), t:t, sys:Math.round(s), dia:Math.round(d), pulse:p==null?null:Math.round(p),
     slot:ui.slot||guessSlot(t), tags:TAGS.map(function(x){return x.k;}).filter(function(k){return ui.tags[k];}),
-    memo:$("memo").value.trim().slice(0,200), n:n};
+    memo:$("memo").value.trim().slice(0,200), n:n, irr:!!ui.irr};
   var btn=$("saveBtn"); btn.disabled=true;
   var wasEdit=!!editingId;
   putReading(r).then(function(){
     btn.disabled=false; resetForm();
     toast(wasEdit?"変更しました":"記録しました（"+r.sys+"/"+r.dia+"）");
     if(r.sys>=180||r.dia>=110) toast("かなり高い値です。症状があればすぐ受診を");
+    else if(r.irr && !wasEdit) toast("不整脈マークも記録しました。動悸・息切れ・めまいがあれば受診を");
   }, function(err){ btn.disabled=false; toast(errMsg(err)); });
 });
 
@@ -978,7 +986,7 @@ function renderToday(){
     '<div class="row" style="justify-content:space-between;margin-bottom:6px"><div class="small ink2">最新の記録 · '+fmtDay(last.t)+' '+fmtTime(last.t)+'（'+SLOTLABEL[last.slot]+'）</div>'+
     '<button type="button" class="editbtn" data-editlast="'+esc(last.id)+'">✎ 修正</button></div>'+
     '<div class="hero"><div class="big">'+last.sys+'<span style="color:var(--muted);font-weight:500">/</span>'+last.dia+'<small>mmHg</small></div>'+
-    '<div style="padding-bottom:4px">'+badge(last.sys,last.dia)+(last.pulse!=null?' <span class="small ink2">脈 '+last.pulse+'</span>':'')+'</div></div>'+
+    '<div style="padding-bottom:4px">'+badge(last.sys,last.dia)+(last.pulse!=null?' <span class="small ink2">脈 '+last.pulse+'</span>':'')+(last.irr?' <span class="irrtag">💓 不整脈</span>':'')+'</div></div>'+
     '<div style="height:12px"></div>'+
     '<div class="tiles">'+
       '<div class="tile"><div class="k">朝の平均</div><div class="v">'+pair(wm)+'</div><div class="d">7日間・'+wm.length+'回</div></div>'+
@@ -1106,7 +1114,8 @@ function analyze(days){
     hit:cur.filter(function(r){return r.sys<target.sys && r.dia<target.dia;}).length,
     max:cur.reduce(function(a,r){return (!a||r.sys>a.sys)?r:a;},null),
     severe:cur.filter(function(r){return r.sys>=180||r.dia>=110;}),
-    low:cur.filter(function(r){return r.sys<90;})
+    low:cur.filter(function(r){return r.sys<90;}),
+    irr:cur.filter(function(r){return r.irr;})
   };
   var dset={}; cur.forEach(function(r){dset[dayKey(r.t)]=dset[dayKey(r.t)]||{}; dset[dayKey(r.t)][r.slot]=1;});
   res.daysLogged=Object.keys(dset).length;
@@ -1175,6 +1184,10 @@ function renderAnalysis(){
   if(a.sdS!=null && a.n>=5 && a.sdS>=12){ fs.push(finding("var(--warn)","〜","日によるばらつきが大きめ（±"+r0(a.sdS)+"）","測る時間・姿勢がそろっているか確認を。ばらつきが大きい状態が続く場合も医師に伝えましょう。")); flags.push("variable"); }
   if(a.daysLogged && a.daysBoth/a.daysLogged<0.5 && a.days>=7){ fs.push(finding("var(--axis)","i","朝夜そろった日が少なめ（"+a.daysBoth+"/"+a.daysLogged+"日）","判定の精度を上げるため、朝と夜の両方を記録できると理想的です。")); }
   if(a.pulse!=null && a.pulse>=100){ fs.push(finding("var(--warn)","♥","脈拍の平均が "+r0(a.pulse)+" 回/分と速め","安静にしてから測っているか確認を。続く場合は医師に相談しましょう。")); }
+  if(a.irr.length){
+    var irrDays={}; a.irr.forEach(function(r){irrDays[dayKey(r.t)]=1;}); var nd=Object.keys(irrDays).length;
+    fs.push(finding("var(--warn)","💓","不整脈マークが "+a.irr.length+" 回（"+nd+"日）","血圧計の不整脈表示は脈の乱れの目安で、診断ではありません。"+(a.irr.length>=2?"くり返し出ています。":"")+"心房細動などが隠れていることもあるため、次の受診時に医師へ伝えましょう（「履歴」タブで日時を確認できます）。動悸・息切れ・めまい・胸の痛みがあれば早めに受診を。"));
+  }
   if(a.low.length){ fs.push(finding("var(--warn)","↓","上が90未満の低い値が "+a.low.length+" 回","ふらつき・めまいがある場合は医師に相談してください（降圧薬服用中は特に）。")); }
   h+=fs.join("");
   if(a.tagFx.length){
@@ -1234,7 +1247,7 @@ function renderLog(){
     var tags=r.tags.map(function(k){return '<span style="white-space:nowrap">'+esc(TAGMAP[k])+'</span>';}).join(" ");
     h+='<li class="tap" data-row="'+esc(r.id)+'"><div class="when">'+SLOTLABEL[r.slot]+'<br>'+fmtTime(r.t)+'</div>'+
        '<div class="grow"><div class="vals">'+r.sys+'/'+r.dia+(r.pulse!=null?' <small>脈'+r.pulse+'</small>':'')+(r.n>1?' <small>(2回平均)</small>':'')+'</div>'+
-       '<div class="meta">'+badge(r.sys,r.dia)+(tags?' '+tags:'')+(r.memo?'<br>'+esc(r.memo):'')+'</div></div>'+
+       '<div class="meta">'+badge(r.sys,r.dia)+(r.irr?' <span class="irrtag">💓 不整脈</span>':'')+(tags?' '+tags:'')+(r.memo?'<br>'+esc(r.memo):'')+'</div></div>'+
        '<button class="editbtn" data-edit="'+esc(r.id)+'">✎ 修正</button>'+
        '<button class="iconbtn" data-del="'+esc(r.id)+'" aria-label="削除">🗑</button></li>';
   });
@@ -1318,10 +1331,10 @@ function renderBackupNote(){
 }
 renderBackupNote();
 function buildCsv(){
-  var rows=[["日付","時刻","タイミング","最高","最低","脈拍","状況","メモ"]];
+  var rows=[["日付","時刻","タイミング","最高","最低","脈拍","不整脈","状況","メモ"]];
 
   readings.forEach(function(r){
-    rows.push([dayKey(r.t),fmtTime(r.t),SLOTLABEL[r.slot],r.sys,r.dia,r.pulse==null?"":r.pulse,
+    rows.push([dayKey(r.t),fmtTime(r.t),SLOTLABEL[r.slot],r.sys,r.dia,r.pulse==null?"":r.pulse,r.irr?"あり":"",
       r.tags.map(function(k){return TAGMAP[k].replace(/^\S+\s/,"");}).join("・"), r.memo]);
   });
   return rows.map(function(row){return row.map(function(v){v=String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(",");}).join("\n");
