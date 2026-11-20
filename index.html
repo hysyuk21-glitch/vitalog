@@ -192,6 +192,7 @@ details.more summary{cursor:pointer;color:var(--ink2);font-size:13px;margin:10px
 svg.chart{width:100%;height:auto;display:block;touch-action:pan-y}
 .legend{display:flex;gap:14px;font-size:12px;color:var(--ink2);margin:4px 2px 8px;flex-wrap:wrap}
 .legend span{display:inline-flex;align-items:center;gap:5px}
+.irrmk{pointer-events:none}
 .sw{width:14px;height:3px;border-radius:2px;display:inline-block}
 .tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--ring);border-radius:10px;padding:8px 10px;font-size:12px;
   box-shadow:0 4px 14px rgba(0,0,0,.12);display:none;min-width:130px;z-index:5}
@@ -316,6 +317,7 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
         <span><i class="sw" style="background:var(--s1)"></i>最高（上）</span>
         <span><i class="sw" style="background:var(--s2)"></i>最低（下）</span>
         <span><i class="sw" style="background:var(--axis);height:0;border-top:2px dashed var(--muted)"></i>目標ライン</span>
+        <span id="irrLeg" style="display:none">💓 不整脈マークが出た日</span>
       </div>
       <div class="chartbox" id="chartBox">
         <svg class="chart" id="chart" viewBox="0 0 680 260" role="img" aria-label="血圧の推移グラフ"></svg>
@@ -325,6 +327,7 @@ table.tbl th{font-size:11px;color:var(--ink2);font-weight:600}
     </div>
     <div class="card">
       <h2>脈拍の推移</h2>
+      <div class="legend" id="irrLeg2" style="display:none"><span>💓 不整脈マークが出た日</span></div>
       <div class="chartbox" id="pulseBox">
         <svg class="chart" id="pulseChart" viewBox="0 0 680 170" role="img" aria-label="脈拍の推移グラフ"></svg>
         <div class="tip" id="tip2"></div>
@@ -1018,7 +1021,8 @@ function dailySeries(days, filter, field){
   return Object.keys(by).map(Number).sort(function(a,b){return a-b;}).map(function(k){
     var a=by[k];
     return {t:k, sys:avg(a.map(function(r){return r.sys;})), dia:avg(a.map(function(r){return r.dia;})),
-      pulse:avg(a.filter(function(r){return r.pulse!=null;}).map(function(r){return r.pulse;})), n:a.length};
+      pulse:avg(a.filter(function(r){return r.pulse!=null;}).map(function(r){return r.pulse;})), n:a.length,
+      irr:a.filter(function(r){return r.irr;}).length};
   });
 }
 function niceTicks(lo,hi,step){ var t=[]; for(var v=Math.ceil(lo/step)*step; v<=hi; v+=step) t.push(v); return t; }
@@ -1069,6 +1073,15 @@ function drawChart(svg, tipEl, opts){
       g+='<circle cx="'+x(d.t)+'" cy="'+y(d[s.key])+'" r="'+rdot+'" fill="'+s.color+'" stroke="var(--card)" stroke-width="1.5"/>';
     });
   });
+  // 不整脈マークが出た日：一番上の線の点の少し上に💓
+  var nIrr=0;
+  if(opts.irr) data.forEach(function(d){
+    if(!d.irr) return; var top=null;
+    opts.series.forEach(function(s){ if(d[s.key]!=null && (top==null||y(d[s.key])<top)) top=y(d[s.key]); });
+    if(top==null) return; nIrr++;
+    g+='<text class="irrmk" x="'+x(d.t).toFixed(1)+'" y="'+Math.max(m.t+12, top-10).toFixed(1)+'" text-anchor="middle" font-size="12">💓</text>';
+  });
+  if(opts.irrLegend) opts.irrLegend.style.display=nIrr?"":"none";
   g+='<g id="hov"></g><rect x="'+m.l+'" y="'+m.t+'" width="'+iw+'" height="'+ih+'" fill="transparent"/>';
   svg.innerHTML=g;
   var hov=svg.querySelector("#hov");
@@ -1079,7 +1092,8 @@ function drawChart(svg, tipEl, opts){
     var cx=x(best.t), h='<line x1="'+cx+'" x2="'+cx+'" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="var(--axis)" stroke-width="1"/>';
     opts.series.forEach(function(s){ if(best[s.key]!=null) h+='<circle cx="'+cx+'" cy="'+y(best[s.key])+'" r="5" fill="'+s.color+'" stroke="var(--card)" stroke-width="2"/>'; });
     hov.innerHTML=h;
-    tipEl.innerHTML='<div class="small ink2" style="margin-bottom:3px">'+fmtDay(best.t)+(best.n>1?' · '+best.n+'回の平均':'')+'</div>'+opts.tip(best);
+    tipEl.innerHTML='<div class="small ink2" style="margin-bottom:3px">'+fmtDay(best.t)+(best.n>1?' · '+best.n+'回の平均':'')+'</div>'+opts.tip(best)+
+      (opts.irr && best.irr?'<div style="margin-top:4px">💓 不整脈マーク <b>'+best.irr+'</b>回</div>':'');
     tipEl.style.display="block";
     var bw=svg.parentNode.clientWidth, left=cx/W*rect.width+12;
     if(left+tipEl.offsetWidth>bw) left=cx/W*rect.width-tipEl.offsetWidth-12;
@@ -1094,13 +1108,13 @@ function renderChart(){
   $("chartTitle").textContent="血圧の推移（"+label+"・"+({all:"すべて",morning:"朝",evening:"夜"}[ui.filter])+"）";
   var data=dailySeries(ui.range, ui.filter, "bp");
   drawChart($("chart"), $("tip"), {h:260, data:data,
-    series:[{key:"sys",color:"var(--s1)"},{key:"dia",color:"var(--s2)"}],
+    series:[{key:"sys",color:"var(--s1)"},{key:"dia",color:"var(--s2)"}], irr:true, irrLegend:$("irrLeg"),
     refs:[{v:target.sys,label:"目標"+target.sys},{v:target.dia,label:"目標"+target.dia}],
     tip:function(d){ return '<div><i class="sw" style="background:var(--s1)"></i> 上 <b>'+Math.round(d.sys)+'</b></div><div><i class="sw" style="background:var(--s2)"></i> 下 <b>'+Math.round(d.dia)+'</b></div><div style="margin-top:4px">'+badge(d.sys,d.dia)+'</div>'; }
   });
   var pdata=dailySeries(ui.range, ui.filter, "pulse");
   drawChart($("pulseChart"), $("tip2"), {h:170, data:pdata,
-    series:[{key:"pulse",color:"var(--s1)"}], refs:[],
+    series:[{key:"pulse",color:"var(--s1)"}], refs:[], irr:true, irrLegend:$("irrLeg2"),
     tip:function(d){ return '脈拍 <b>'+Math.round(d.pulse)+'</b> 回/分'; }
   });
 }
